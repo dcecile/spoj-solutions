@@ -1,9 +1,11 @@
 require 'singleton'
+require 'open3'
+
+ExecutionResult = Struct.new(:program_text, :input, :output, :status)
 
 class Program
   include Singleton
 
-  NAME = "SUBSTR1a"
   POLITENESS_LEVEL = 5
 
   def initialize
@@ -28,24 +30,22 @@ class Program
     @politeness_counter == 0
   end
 
-  def write
-    full_text = @buffer.string
-    puts "Program..."
-    puts full_text
-    IO.write("#{NAME}.i", full_text)
-    puts
+  def program_text
+    @buffer.string
   end
 
-  def compile
-    puts "Compiling..."
-    system("ick #{NAME}.i") or raise "Compilation error"
-    puts "    ...succeeded!"
-    puts
+  def write(name)
+    IO.write("#{name}.i", program_text)
   end
 
-  def run
-    puts "Running..."
-    system("./#{NAME}") or raise "Runtime error"
+  def compile(name)
+    output, status = Open3.capture2e("ick -b #{name}.i")
+    ExecutionResult.new(program_text, nil, output, status)
+  end
+
+  def run(name, input=nil)
+    output, status = Open3.capture2e(File.absolute_path(name), stdin_data: input)
+    ExecutionResult.new(program_text, input, output, status)
   end
 end
 
@@ -119,10 +119,10 @@ def get_new_name
   Program.instance.get_new_name
 end
 
-def execute_program
-  Program.instance.write
-  Program.instance.compile
-  Program.instance.run
+def execute_program(name)
+  Program.instance.write(name)
+  Program.instance.compile(name)
+  Program.instance.run(name)
 end
 
 # Standard library
@@ -284,13 +284,19 @@ def compare
   # TODO
 end
 
-initialize_arrays
-initialize_globals
-write_string("hello ick world\n")
-#read_input
-#compare
-exit_program
-execute_program
+def main
+  initialize_arrays
+  initialize_globals
+  write_string("hello ick world\n")
+  #read_input
+  #compare
+  exit_program
+  execute_program("SUBSTR1a")
+end
+
+if __FILE__ == $PROGRAM_NAME
+  main
+end
 
 # Ideal setup:
 # - define x= methods for variables
