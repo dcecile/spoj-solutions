@@ -1,15 +1,28 @@
-require 'singleton'
 require 'open3'
 
-ExecutionResult = Struct.new(:program_text, :input, :output, :status)
+ExecutionResult = Struct.new(:program_text, :input, :output, :status) do
+  def join
+    puts output
+    abort unless status.success?
+  end
+end
 
-class Program
-  include Singleton
+Reference = Struct.new(:type, :name) do
+  def to_s
+    "#{type}#{name}"
+  end
+end
 
+Label = Struct.new(:line) do
+  def to_s
+    "(#{line})"
+  end
+end
+
+module Listing
   POLITENESS_LEVEL = 5
 
-  def initialize
-    @next_name = 10
+  def initialize_listing
     @buffer = StringIO.new
     @politeness_counter = 0
   end
@@ -20,10 +33,8 @@ class Program
       (@politeness_counter - 1) % POLITENESS_LEVEL
   end
 
-  def get_new_name
-    result = @next_name
-    @next_name += 1
-    result
+  def label(line)
+    Label.new(line)
   end
 
   def politeness_required?
@@ -34,7 +45,7 @@ class Program
     @buffer.string
   end
 
-  def write(name)
+  def write_source(name)
     IO.write("#{name}.i", program_text)
   end
 
@@ -49,249 +60,266 @@ class Program
   end
 end
 
-Reference = Struct.new(:type, :name) do
-  def to_s
-    "#{type}#{name}"
+module References
+  def initialize_references
+    @next_name = 10
+  end
+
+  def get_new_name
+    result = @next_name
+    @next_name += 1
+    result
+  end
+
+  def short_reference(name=get_new_name)
+    Reference.new(".", name)
+  end
+
+  def long_reference(name=get_new_name)
+    Reference.new(":", name)
+  end
+
+  def short_array_reference(name=get_new_name)
+    Reference.new(",", name)
+  end
+
+  def long_array_reference(name=get_new_name)
+    Reference.new(";", name)
   end
 end
 
-def short_reference(name=get_new_name)
-  Reference.new(".", name)
-end
+module Expressions
+  def literal(value)
+    "\##{value}"
+  end
 
-def long_reference(name=get_new_name)
-  Reference.new(":", name)
-end
+  def index(array_reference, value)
+    "#{array_reference}SUB#{value}"
+  end
 
-def short_array_reference(name=get_new_name)
-  Reference.new(",", name)
-end
+  def interleave(x, y)
+    "#{x}$#{y}"
+  end
 
-def long_array_reference(name=get_new_name)
-  Reference.new(";", name)
-end
+  def select(x, y)
+    "#{x}~#{y}"
+  end
 
-Label = Struct.new(:line) do
-  def to_s
-    "(#{line})"
+  def group(x)
+    "'#{x}'"
+  end
+
+  def supergroup(x)
+    "\"#{x}\""
+  end
+
+  def shift_left_one(x)
+    select(
+      group(
+        interleave(x, literal(0)),
+      literal(0x1010_1010_1010_1011)))
   end
 end
 
-def label(line)
-  Label.new(line)
+module StandardLibrary
+  def initialize_standard_library
+    @standard_plus = label(1009)
+    @standard_minus = label(1010)
+
+    @standard_input_1 = short_reference(1)
+    @standard_input_2 = short_reference(2)
+    @standard_output_3 = short_reference(3)
+  end
 end
 
-# Expressions
-def literal(value)
-  "\##{value}"
+module Statements
+  def statement(text, label=nil)
+    label_text = label.to_s.rjust(3)
+    command_text =
+      if politeness_required?
+        "PLEASE"
+      else
+        "DO"
+      end
+    statement = "#{label_text} #{command_text} #{text}"
+    add_statement(statement)
+  end
+
+  def set_value(output, value)
+    statement("#{output} <- #{value}")
+  end
+
+  def read(*outputs)
+    statement("WRITE IN #{outputs.join(", ")}")
+  end
+
+  def write(*values)
+    statement("READ OUT #{values.join(", ")}")
+  end
+
+  def goto(label)
+    statement("#{label} NEXT")
+  end
+
+  def set_addition(output, x, y)
+    set_value(@standard_input_1, x)
+    set_value(@standard_input_2, y)
+    goto(@standard_plus)
+    set_value(output, @standard_output_3)
+  end
+
+  def set_subtraction(output, x, y)
+    set_value(@standard_input_1, x)
+    set_value(@standard_input_2, y)
+    goto(@standard_minus)
+    set_value(output, @standard_output_3)
+  end
+
+  def exit_program
+    statement("GIVE UP")
+  end
 end
 
-def index(array_reference, value)
-  "#{array_reference}SUB#{value}"
+module Program
+  include Listing
+  include References
+  include Expressions
+  include StandardLibrary
+  include Statements
+
+  def initialize_program
+    initialize_listing
+    initialize_references
+    initialize_standard_library
+  end
 end
 
-def interleave(x, y)
-  "#{x}$#{y}"
-end
+class SubstringProgram
+  include Program
 
-def select(x, y)
-  "#{x}~#{y}"
-end
+  LENGTH_A = 4
+  LENGTH_B = 2
 
-def group(x)
-  "'#{x}'"
-end
+  def initialize_local_references
+    @string_input_a = short_array_reference()
+    @string_input_b = short_array_reference()
+    @string_input_separator = short_array_reference()
+    @string_output = short_array_reference()
+    @last_input = short_reference()
+    @last_output = short_reference()
+    @number_a = short_reference()
+    @number_b = short_reference()
+  end
 
-def supergroup(x)
-  "\"#{x}\""
-end
+  def initialize_arrays
+    set_value(@string_input_a, literal(LENGTH_A))
+    set_value(@string_input_b, literal(LENGTH_B))
+    set_value(@string_input_separator, literal(1))
+    set_value(@string_output, literal(1))
+  end
 
-def shift_left_one(x)
-  select(
-    group(
-      interleave(x, literal(0)),
-    literal(0x1010_1010_1010_1011)))
-end
+  def initialize_globals
+    set_value(@last_input, literal(0))
+    set_value(@last_output, literal(0))
+  end
 
-# Output
-
-def get_new_name
-  Program.instance.get_new_name
-end
-
-def execute_program(name)
-  Program.instance.write(name)
-  Program.instance.compile(name)
-  Program.instance.run(name)
-end
-
-# Standard library
-
-STANDARD_PLUS = label(1009)
-STANDARD_MINUS = label(1010)
-
-STANDARD_INPUT_1 = short_reference(1)
-STANDARD_INPUT_2 = short_reference(2)
-STANDARD_OUTPUT_3 = short_reference(3)
-
-# Statements
-
-def statement(text, label=nil)
-  label_text = label.to_s.rjust(3)
-  command_text =
-    if Program.instance.politeness_required?
-      "PLEASE"
-    else
-      "DO"
+  def read_string(output, length)
+    read(output)
+    (1..length).each do |i|
+      current_char = index(output, literal(i))
+      set_addition(
+        current_char,
+        @last_input,
+        current_char)
+      set_value(
+        current_char,
+        select(
+          group(current_char),
+          literal(0xFF)))
+      set_value(
+        @last_input,
+        current_char)
     end
-  statement = "#{label_text} #{command_text} #{text}"
-  Program.instance.add_statement(statement)
-end
-
-def set_value(output, value)
-  statement("#{output} <- #{value}")
-end
-
-def read(*outputs)
-  statement("WRITE IN #{outputs.join(", ")}")
-end
-
-def write(*values)
-  statement("READ OUT #{values.join(", ")}")
-end
-
-def goto(label)
-  statement("#{label} NEXT")
-end
-
-def set_addition(output, x, y)
-  set_value(STANDARD_INPUT_1, x)
-  set_value(STANDARD_INPUT_2, y)
-  goto(STANDARD_PLUS)
-  set_value(output, STANDARD_OUTPUT_3)
-end
-
-def set_subtraction(output, x, y)
-  set_value(STANDARD_INPUT_1, x)
-  set_value(STANDARD_INPUT_2, y)
-  goto(STANDARD_MINUS)
-  set_value(output, STANDARD_OUTPUT_3)
-end
-
-def exit_program
-  statement("GIVE UP")
-end
-
-# Program
-LENGTH_A = 4
-LENGTH_B = 2
-STRING_INPUT_A = short_array_reference()
-STRING_INPUT_B = short_array_reference()
-STRING_INPUT_SEPARATOR = short_array_reference()
-STRING_OUTPUT = short_array_reference()
-LAST_INPUT = short_reference()
-LAST_OUTPUT = short_reference()
-NUMBER_A = short_reference()
-NUMBER_B = short_reference()
-
-def initialize_arrays
-  set_value(STRING_INPUT_A, literal(LENGTH_A))
-  set_value(STRING_INPUT_B, literal(LENGTH_B))
-  set_value(STRING_INPUT_SEPARATOR, literal(1))
-  set_value(STRING_OUTPUT, literal(1))
-end
-
-def initialize_globals
-  set_value(LAST_INPUT, literal(0))
-  set_value(LAST_OUTPUT, literal(0))
-end
-
-def read_string(output, length)
-  read(output)
-  (1..length).each do |i|
-    current_char = index(output, literal(i))
-    set_addition(
-      current_char,
-      LAST_INPUT,
-      current_char)
-    set_value(
-      current_char,
-      select(
-        group(current_char),
-        literal(0xFF)))
-    set_value(
-      LAST_INPUT,
-      current_char)
   end
-end
 
-def parse_string(output, input, length)
-  set_value(output, literal(0))
-  (1..length).each do |i|
-    current_char = index(input, literal(i))
+  def parse_string(output, input, length)
+    set_value(output, literal(0))
+    (1..length).each do |i|
+      current_char = index(input, literal(i))
+      set_value(
+        output,
+        select(
+          supergroup(
+            interleave(
+              output,
+              group(current_char))),
+          literal(0b1010_1010_1010_1011)))
+    end
+  end
+
+  def read_separator
+    read_string(@string_input_separator, 1)
+  end
+
+  def read_input
+    read_string(@string_input_a, LENGTH_A)
+    parse_string(@number_a, @string_input_a, LENGTH_A)
+    read_separator
+    read_string(@string_input_b, LENGTH_B)
+    parse_string(@number_b, @string_input_b, LENGTH_B)
+  end
+
+  def reverse_bits(value)
+    value = ((value & 0b00001111) << 4) | ((value & 0b11110000) >> 4)
+    value = ((value & 0b00110011) << 2) | ((value & 0b11001100) >> 2)
+    value = ((value & 0b01010101) << 1) | ((value & 0b10101010) >> 1)
+    value
+  end
+
+  def write_char(char)
+    value = char.codepoints.first
+    reversed_value = reverse_bits(value)
+    set_subtraction(
+      index(@string_output, literal(1)),
+      @last_output,
+      literal(reversed_value)
+    )
+    write(@string_output)
     set_value(
-      output,
-      select(
-        supergroup(
-          interleave(
-            output,
-            group(current_char))),
-        literal(0b1010_1010_1010_1011)))
+      @last_output,
+      literal(reversed_value)
+    )
   end
-end
 
-def read_separator
-  read_string(STRING_INPUT_SEPARATOR, 1)
-end
-
-def read_input
-  read_string(STRING_INPUT_A, LENGTH_A)
-  parse_string(NUMBER_A, STRING_INPUT_A, LENGTH_A)
-  read_separator
-  read_string(STRING_INPUT_B, LENGTH_B)
-  parse_string(NUMBER_B, STRING_INPUT_B, LENGTH_B)
-end
-
-def reverse_bits(value)
-  value = ((value & 0b00001111) << 4) | ((value & 0b11110000) >> 4)
-  value = ((value & 0b00110011) << 2) | ((value & 0b11001100) >> 2)
-  value = ((value & 0b01010101) << 1) | ((value & 0b10101010) >> 1)
-  value
-end
-
-def write_char(char)
-  value = char.codepoints.first
-  reversed_value = reverse_bits(value)
-  set_subtraction(
-    index(STRING_OUTPUT, literal(1)),
-    LAST_OUTPUT,
-    literal(reversed_value)
-  )
-  write(STRING_OUTPUT)
-  set_value(
-    LAST_OUTPUT,
-    literal(reversed_value)
-  )
-end
-
-def write_string(string)
-  string.chars.each do |char|
-    write_char(char)
+  def write_string(string)
+    string.chars.each do |char|
+      write_char(char)
+    end
   end
-end
 
-def compare
-  # TODO
+  def compare
+    # TODO
+  end
+
+  def initialize
+    initialize_program
+    initialize_local_references
+    initialize_arrays
+    initialize_globals
+    write_string("hello ick world\n")
+    #read_input
+    #compare
+    exit_program
+  end
 end
 
 def main
-  initialize_arrays
-  initialize_globals
-  write_string("hello ick world\n")
-  #read_input
-  #compare
-  exit_program
-  execute_program("SUBSTR1a")
+  name = "SUBSTR1a"
+  program = SubstringProgram.new
+  puts program.program_text
+  program.write_source(name)
+  program.compile(name).join
+  program.run(name).join
 end
 
 if __FILE__ == $PROGRAM_NAME
@@ -317,32 +345,3 @@ end
 # (03) PLEASE RESUME :1
 # (04) PLEASE FORGET #1
 #      PLEASE GIVE UP
-
-# Arrays subscripts start with 1
-#    DO ,1 <- #4
-#    DO ,1SUB#1 <- #3
-#    DO ,1SUB#2 <- #6
-#    DO ,1SUB#3 <- #9
-#    DO ,1SUB#4 <- #12
-#    DO READ OUT ,1SUB#1
-#    DO READ OUT ,1SUB#2
-#    PLEASE READ OUT ,1SUB#3
-#    PLEASE READ OUT ,1SUB#4
-#    PLEASE GIVE UP
-
-# Read in chars (static lastin)
-#    DO ,1 <- #4
-#    DO WRITE IN ,1
-#    DO READ OUT ,1SUB#1
-#    DO READ OUT ,1SUB#2
-#    DO READ OUT ,1SUB#3
-#    PLEASE READ OUT ,1SUB#4
-#    DO READ OUT ,1
-#    PLEASE GIVE UP
-
-# Output is all reversed bits
-# But zero minus that (i.e. 256 - x) (static lastout)
-#  '?' abcd efgh => hgfe dcba
-#  '0' 0011 0000 => 0000 1100 =>  12 => 244
-#  '1' 0011 0001 => 1000 1100 => 140 => 116
-# '\n' 0000 1010 => 0101 0000 =>  80 => 176

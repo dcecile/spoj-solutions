@@ -50,14 +50,22 @@ end
 
 RSpec.describe Program do
   it "runs" do
+    class TestProgram
+      include Program
+
+      def initialize
+        initialize_program
+        #write(literal(100000))
+        write(literal(1))
+        #write(literal(1))
+        exit_program
+      end
+    end
+
     Dir.mktmpdir do |dir|
       name = "#{dir}/test"
-      #write(literal(100000))
-      write(literal(1))
-      #write(literal(1))
-      exit_program
-      program = Program.instance
-      program.write(name)
+      program = TestProgram.new
+      program.write_source(name)
       expect(program.compile(name)).to succeed_and_output("")
       expect(program.run(name)).to succeed_and_output(" \nI\n")
     end

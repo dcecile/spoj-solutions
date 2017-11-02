@@ -1,2 +1,4 @@
 *.in
 *.out
+/SUBSTR1a
+/SUBSTR1a.i
