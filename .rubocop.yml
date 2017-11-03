@@ -1,0 +1,9 @@
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Metrics/BlockLength:
+  ExcludedMethods:
+    - describe
+
+Naming/FileName:
+  Enabled: false

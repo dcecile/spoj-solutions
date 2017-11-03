@@ -1,6 +1,9 @@
 # PRIME1 - Prime Generator
 # http://www.spoj.com/problems/PRIME1/
 
+# Use two sieves in combination: one to find all
+# possible "factor" primes, and one to find all
+# primes in the target range
 class Sieve
   def self.find_each_prime(from, to, &block)
     seed = Sieve.new(2, Math.sqrt(to).floor)
@@ -20,18 +23,16 @@ class Sieve
 
   def remove_multiples(prime)
     multiple = prime * prime
-    if multiple < @from
-      multiple = prime * (@from / prime.to_f).ceil
-    end
+    multiple = prime * (@from / prime.to_f).ceil if multiple < @from
     while multiple <= @to
       invalidate_prime(multiple)
       multiple += prime
     end
   end
 
-  def each_prime(&block)
+  def each_prime
     (@from..@to).each do |n|
-      block.call(n) if prime?(n)
+      yield n if prime?(n)
     end
   end
 
@@ -55,6 +56,4 @@ def main
   end
 end
 
-if __FILE__ == $PROGRAM_NAME
-  main
-end
+main if $PROGRAM_NAME == __FILE__
