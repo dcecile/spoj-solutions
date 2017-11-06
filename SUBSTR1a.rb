@@ -75,16 +75,8 @@ module References
     Reference.new(".", name)
   end
 
-  def long_reference(name=get_new_name)
-    Reference.new(":", name)
-  end
-
   def short_array_reference(name=get_new_name)
     Reference.new(",", name)
-  end
-
-  def long_array_reference(name=get_new_name)
-    Reference.new(";", name)
   end
 end
 
@@ -116,8 +108,8 @@ module Expressions
   def shift_left_one(x)
     select(
       group(
-        interleave(x, literal(0)),
-      literal(0x1010_1010_1010_1011)))
+        interleave(x, literal(0))),
+      literal(0b1010_1010_1010_1011))
   end
 end
 
@@ -129,6 +121,20 @@ module StandardLibrary
     @standard_input_1 = short_reference(1)
     @standard_input_2 = short_reference(2)
     @standard_output_3 = short_reference(3)
+  end
+
+  def set_addition(output, x, y)
+    set_value(@standard_input_1, x)
+    set_value(@standard_input_2, y)
+    goto(@standard_plus)
+    set_value(output, @standard_output_3)
+  end
+
+  def set_subtraction(output, x, y)
+    set_value(@standard_input_1, x)
+    set_value(@standard_input_2, y)
+    goto(@standard_minus)
+    set_value(output, @standard_output_3)
   end
 end
 
@@ -161,42 +167,26 @@ module Statements
     statement("#{label} NEXT")
   end
 
-  def set_addition(output, x, y)
-    set_value(@standard_input_1, x)
-    set_value(@standard_input_2, y)
-    goto(@standard_plus)
-    set_value(output, @standard_output_3)
-  end
-
-  def set_subtraction(output, x, y)
-    set_value(@standard_input_1, x)
-    set_value(@standard_input_2, y)
-    goto(@standard_minus)
-    set_value(output, @standard_output_3)
-  end
-
   def exit_program
     statement("GIVE UP")
   end
 end
 
-module Program
+class Program
   include Listing
   include References
   include Expressions
   include StandardLibrary
   include Statements
 
-  def initialize_program
+  def initialize
     initialize_listing
     initialize_references
     initialize_standard_library
   end
 end
 
-class SubstringProgram
-  include Program
-
+class SubstringProgram < Program
   LENGTH_A = 4
   LENGTH_B = 2
 
@@ -302,7 +292,7 @@ class SubstringProgram
   end
 
   def initialize
-    initialize_program
+    super
     initialize_local_references
     initialize_arrays
     initialize_globals

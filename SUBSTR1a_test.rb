@@ -1,73 +1,181 @@
 require "tmpdir"
-require "rspec/expectations"
-require "SUBSTR1a.rb"
-
-RSpec::Matchers.define :succeed_and_output do |expected|
-  match do |actual|
-    @program_text = actual.program_text
-    @input = actual.input
-    @actual = actual.output
-    @status = actual.status
-    if !@status.success?
-      false
-    else
-      values_match?(@actual, expected)
-    end
-  end
-
-  failure_message do
-    lines = []
-    lines<<"Program:"
-    lines<<@program_text
-    if !@status.success?
-      status_failure_message(lines)
-    else
-      output_failure_message(lines)
-    end
-    lines.join("\n")
-  end
-
-  def status_failure_message(lines)
-    lines<<"Output:"
-    lines<<@actual
-  end
-
-  def output_failure_message(lines)
-    if @input
-      lines<<"Input:"
-      lines<<@input
-    end
-    lines<<"Expected output:"
-    lines<<expected
-    lines<<"Actual output:"
-    lines<<@actual
-  end
-
-  def diffable?
-    @status.success?
-  end
-end
+require "SUBSTR1a_test_helper"
+require "SUBSTR1a"
 
 RSpec.describe Program do
-  it "runs" do
-    class TestProgram
-      include Program
-
+  test_programs = [
+    create_program("exits") do
       def initialize
-        initialize_program
-        #write(literal(100000))
-        write(literal(1))
-        #write(literal(1))
+        super
         exit_program
       end
-    end
 
-    Dir.mktmpdir do |dir|
-      name = "#{dir}/test"
-      program = TestProgram.new
-      program.write_source(name)
-      expect(program.compile(name)).to succeed_and_output("")
-      expect(program.run(name)).to succeed_and_output(" \nI\n")
+      def self.output
+        ""
+      end
+    end,
+    create_program("writes numbers") do
+      def initialize
+        super
+        write(literal(400))
+        write(literal(632))
+        exit_program
+      end
+
+      def self.output
+        output_numerals(400, 632)
+      end
+    end,
+    create_program("reads numbers") do
+      def initialize
+        super
+        @number_input = short_reference()
+        read(@number_input)
+        write(@number_input)
+        read(@number_input)
+        write(@number_input)
+        exit_program
+      end
+
+      def self.input
+        "FOUR\nFIVE\n"
+      end
+
+      def self.output
+        output_numerals(4, 5)
+      end
+    end,
+    create_program("indexes arrays") do
+      def initialize
+        super
+        @array = short_array_reference()
+        set_value(@array, literal(2))
+        set_value(index(@array, literal(1)), literal(13))
+        set_value(index(@array, literal(2)), literal(19))
+        write(index(@array, literal(1)))
+        write(index(@array, literal(2)))
+        exit_program
+      end
+
+      def self.output
+        output_numerals(13, 19)
+      end
+    end,
+    create_program("interleaves bits") do
+      def initialize
+        super
+        @result = short_reference()
+        set_value(
+          @result,
+          interleave(literal(0b0101), literal(0b1010))
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0110_0110)
+      end
+    end,
+    create_program("selects bits") do
+      def initialize
+        super
+        @result = short_reference()
+        set_value(
+          @result,
+          select(literal(0b1101), literal(0b1010))
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0010)
+      end
+    end,
+    create_program("groups operations") do
+      def initialize
+        super
+        @result = short_reference()
+        set_value(
+          @result,
+          select(
+            group(
+              interleave(
+                literal(0b0101),
+                literal(0b1010)
+              )
+            ),
+            literal(0b1010)
+          )
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0001)
+      end
+    end,
+    create_program("supergroups operations") do
+      def initialize
+        super
+        @array = short_array_reference()
+        set_value(@array, literal(2))
+        set_value(index(@array, literal(1)), literal(13))
+        set_value(index(@array, literal(2)), literal(19))
+        @result = short_reference()
+        set_value(
+          @result,
+          index(
+            @array,
+            supergroup(
+              select(
+                group(
+                  interleave(
+                    literal(0b0101),
+                    literal(0b1010)
+                  )
+                ),
+                literal(0b1010)
+              )
+            )
+          )
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(13)
+      end
+    end,
+    create_program("shifts bits left one") do
+      def initialize
+        super
+        @result = short_reference()
+        set_value(
+          @result,
+          shift_left_one(literal(0b0111))
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b1110)
+      end
+    end
+  ]
+  test_programs.each do |program_class|
+    it program_class.name do
+      Dir.mktmpdir do |dir|
+        name = "#{dir}/test"
+        program = program_class.new
+        program.write_source(name)
+        expect(program.compile(name)).to succeed_and_output("")
+        expect(program.run(name, program_class.input)).to succeed_and_output(program_class.output)
+      end
     end
   end
 end
