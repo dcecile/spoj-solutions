@@ -60,6 +60,40 @@ module Listing
   end
 end
 
+module Statements
+  def statement(text, label=nil)
+    label_text = label.to_s.rjust(3)
+    command_text =
+      if politeness_required?
+        "PLEASE"
+      else
+        "DO"
+      end
+    statement = "#{label_text} #{command_text} #{text}"
+    add_statement(statement)
+  end
+
+  def set_value(output, value)
+    statement("#{output} <- #{value}")
+  end
+
+  def read(*outputs)
+    statement("WRITE IN #{outputs.join(", ")}")
+  end
+
+  def write(*values)
+    statement("READ OUT #{values.join(", ")}")
+  end
+
+  def goto(label)
+    statement("#{label} NEXT")
+  end
+
+  def exit_program
+    statement("GIVE UP")
+  end
+end
+
 module References
   def initialize_references
     @next_name = 10
@@ -138,79 +172,14 @@ module StandardLibrary
   end
 end
 
-module Statements
-  def statement(text, label=nil)
-    label_text = label.to_s.rjust(3)
-    command_text =
-      if politeness_required?
-        "PLEASE"
-      else
-        "DO"
-      end
-    statement = "#{label_text} #{command_text} #{text}"
-    add_statement(statement)
-  end
-
-  def set_value(output, value)
-    statement("#{output} <- #{value}")
-  end
-
-  def read(*outputs)
-    statement("WRITE IN #{outputs.join(", ")}")
-  end
-
-  def write(*values)
-    statement("READ OUT #{values.join(", ")}")
-  end
-
-  def goto(label)
-    statement("#{label} NEXT")
-  end
-
-  def exit_program
-    statement("GIVE UP")
-  end
-end
-
-class Program
-  include Listing
-  include References
-  include Expressions
-  include StandardLibrary
-  include Statements
-
-  def initialize
-    initialize_listing
-    initialize_references
-    initialize_standard_library
-  end
-end
-
-class SubstringProgram < Program
-  LENGTH_A = 4
-  LENGTH_B = 2
-
-  def initialize_local_references
-    @string_input_a = short_array_reference()
-    @string_input_b = short_array_reference()
-    @string_input_separator = short_array_reference()
-    @string_output = short_array_reference()
+module BinaryIO
+  def initialize_binary_io
     @last_input = short_reference()
     @last_output = short_reference()
-    @number_a = short_reference()
-    @number_b = short_reference()
-  end
-
-  def initialize_arrays
-    set_value(@string_input_a, literal(LENGTH_A))
-    set_value(@string_input_b, literal(LENGTH_B))
-    set_value(@string_input_separator, literal(1))
-    set_value(@string_output, literal(1))
-  end
-
-  def initialize_globals
+    @string_output = short_array_reference()
     set_value(@last_input, literal(0))
     set_value(@last_output, literal(0))
+    set_value(@string_output, literal(1))
   end
 
   def read_string(output, length)
@@ -236,27 +205,13 @@ class SubstringProgram < Program
     set_value(output, literal(0))
     (1..length).each do |i|
       current_char = index(input, literal(i))
-      set_value(
+      set_addition(
         output,
+        shift_left_one(output),
         select(
-          supergroup(
-            interleave(
-              output,
-              group(current_char))),
-          literal(0b1010_1010_1010_1011)))
+          group(current_char),
+          literal(0x01)))
     end
-  end
-
-  def read_separator
-    read_string(@string_input_separator, 1)
-  end
-
-  def read_input
-    read_string(@string_input_a, LENGTH_A)
-    parse_string(@number_a, @string_input_a, LENGTH_A)
-    read_separator
-    read_string(@string_input_b, LENGTH_B)
-    parse_string(@number_b, @string_input_b, LENGTH_B)
   end
 
   def reverse_bits(value)
@@ -286,6 +241,53 @@ class SubstringProgram < Program
       write_char(char)
     end
   end
+end
+
+class Program
+  include Listing
+  include Statements
+  include References
+  include Expressions
+  include StandardLibrary
+  include BinaryIO
+
+  def initialize
+    initialize_listing
+    initialize_references
+    initialize_standard_library
+    initialize_binary_io
+  end
+end
+
+class SubstringProgram < Program
+  LENGTH_A = 4
+  LENGTH_B = 2
+
+  def initialize_local_references
+    @string_input_a = short_array_reference()
+    @string_input_b = short_array_reference()
+    @string_input_separator = short_array_reference()
+    @number_a = short_reference()
+    @number_b = short_reference()
+  end
+
+  def initialize_arrays
+    set_value(@string_input_a, literal(LENGTH_A))
+    set_value(@string_input_b, literal(LENGTH_B))
+    set_value(@string_input_separator, literal(1))
+  end
+
+  def read_separator
+    read_string(@string_input_separator, 1)
+  end
+
+  def read_input
+    read_string(@string_input_a, LENGTH_A)
+    parse_string(@number_a, @string_input_a, LENGTH_A)
+    read_separator
+    read_string(@string_input_b, LENGTH_B)
+    parse_string(@number_b, @string_input_b, LENGTH_B)
+  end
 
   def compare
     # TODO
@@ -295,7 +297,6 @@ class SubstringProgram < Program
     super
     initialize_local_references
     initialize_arrays
-    initialize_globals
     write_string("hello ick world\n")
     #read_input
     #compare

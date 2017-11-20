@@ -45,6 +45,19 @@ RSpec.describe Program do
         output_numerals(4, 5)
       end
     end,
+    create_program("sets and gets basic reference") do
+      def initialize
+        super
+        @number = short_reference()
+        set_value(@number, literal(231))
+        write(@number)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(231)
+      end
+    end,
     create_program("indexes arrays") do
       def initialize
         super
@@ -164,6 +177,91 @@ RSpec.describe Program do
 
       def self.output
         output_numerals(0b1110)
+      end
+    end,
+    create_program("adds") do
+      def initialize
+        super
+        @result = short_reference()
+        set_addition(
+          @result,
+          literal(329),
+          literal(210)
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(329 + 210)
+      end
+    end,
+    create_program("subtracts") do
+      def initialize
+        super
+        @result = short_reference()
+        set_subtraction(
+          @result,
+          literal(329),
+          literal(210)
+        )
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(329 - 210)
+      end
+    end,
+    create_program("reads text") do
+      def initialize
+        super
+        @input = short_array_reference()
+        set_value(@input, literal(3))
+        read_string(@input, 3)
+        write(index(@input, literal(1)))
+        write(index(@input, literal(2)))
+        write(index(@input, literal(3)))
+        exit_program
+      end
+
+      def self.input
+        "Ick"
+      end
+
+      def self.output
+        output_numerals(*input.codepoints)
+      end
+    end,
+    create_program("reads binary") do
+      def initialize
+        super
+        @number = short_reference()
+        @input = short_array_reference()
+        set_value(@input, literal(8))
+        read_string(@input, 8)
+        parse_string(@number, @input, 8)
+        write(@number)
+        exit_program
+      end
+
+      def self.input
+        "11010111"
+      end
+
+      def self.output
+        output_numerals(0b11010111)
+      end
+    end,
+    create_program("writes text") do
+      def initialize
+        super
+        write_string("hello ick world\n")
+        exit_program
+      end
+
+      def self.output
+        "hello ick world\n"
       end
     end
   ]
