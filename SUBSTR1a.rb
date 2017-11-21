@@ -105,12 +105,23 @@ module References
     result
   end
 
-  def short_reference(name=get_new_name)
-    Reference.new(".", name)
+  def define_short(symbol, name=get_new_name)
+    define_reference(symbol, Reference.new(".", name))
   end
 
-  def short_array_reference(name=get_new_name)
-    Reference.new(",", name)
+  def define_short_array(symbol, name=get_new_name)
+    define_reference(symbol, Reference.new(",", name))
+  end
+
+  def define_reference(symbol, reference)
+    getter = symbol
+    setter = "#{symbol}=".to_sym
+    define_singleton_method(getter) do
+      reference
+    end
+    define_singleton_method(setter) do |value|
+      set_value(reference, value)
+    end
   end
 end
 
@@ -152,34 +163,34 @@ module StandardLibrary
     @standard_plus = label(1009)
     @standard_minus = label(1010)
 
-    @standard_input_1 = short_reference(1)
-    @standard_input_2 = short_reference(2)
-    @standard_output_3 = short_reference(3)
+    define_short(:standard_input_1, 1)
+    define_short(:standard_input_2, 2)
+    define_short(:standard_output_3, 3)
   end
 
   def set_addition(output, x, y)
-    set_value(@standard_input_1, x)
-    set_value(@standard_input_2, y)
+    self.standard_input_1 = x
+    self.standard_input_2 = y
     goto(@standard_plus)
-    set_value(output, @standard_output_3)
+    set_value(output, standard_output_3)
   end
 
   def set_subtraction(output, x, y)
-    set_value(@standard_input_1, x)
-    set_value(@standard_input_2, y)
+    self.standard_input_1 = x
+    self.standard_input_2 = y
     goto(@standard_minus)
-    set_value(output, @standard_output_3)
+    set_value(output, standard_output_3)
   end
 end
 
 module BinaryIO
   def initialize_binary_io
-    @last_input = short_reference()
-    @last_output = short_reference()
-    @string_output = short_array_reference()
-    set_value(@last_input, literal(0))
-    set_value(@last_output, literal(0))
-    set_value(@string_output, literal(1))
+    define_short(:last_input)
+    define_short(:last_output)
+    define_short_array(:string_output)
+    self.last_input = literal(0)
+    self.last_output = literal(0)
+    self.string_output = literal(1)
   end
 
   def read_string(output, length)
@@ -188,16 +199,15 @@ module BinaryIO
       current_char = index(output, literal(i))
       set_addition(
         current_char,
-        @last_input,
+        last_input,
         current_char)
       set_value(
         current_char,
         select(
           group(current_char),
-          literal(0xFF)))
-      set_value(
-        @last_input,
-        current_char)
+          literal(0xFF))
+      )
+      self.last_input = current_char
     end
   end
 
@@ -225,15 +235,12 @@ module BinaryIO
     value = char.codepoints.first
     reversed_value = reverse_bits(value)
     set_subtraction(
-      index(@string_output, literal(1)),
-      @last_output,
+      index(string_output, literal(1)),
+      last_output,
       literal(reversed_value)
     )
-    write(@string_output)
-    set_value(
-      @last_output,
-      literal(reversed_value)
-    )
+    write(string_output)
+    self.last_output = literal(reversed_value)
   end
 
   def write_string(string)
@@ -264,29 +271,29 @@ class SubstringProgram < Program
   LENGTH_B = 2
 
   def initialize_local_references
-    @string_input_a = short_array_reference()
-    @string_input_b = short_array_reference()
-    @string_input_separator = short_array_reference()
-    @number_a = short_reference()
-    @number_b = short_reference()
+    define_short_array(:string_input_a)
+    define_short_array(:string_input_b)
+    define_short_array(:string_input_separator)
+    define_short(:number_a)
+    define_short(:number_b)
   end
 
   def initialize_arrays
-    set_value(@string_input_a, literal(LENGTH_A))
-    set_value(@string_input_b, literal(LENGTH_B))
-    set_value(@string_input_separator, literal(1))
+    self.string_input_a = literal(LENGTH_A)
+    self.string_input_b = literal(LENGTH_B)
+    self.string_input_separator = literal(1)
   end
 
   def read_separator
-    read_string(@string_input_separator, 1)
+    read_string(string_input_separator, 1)
   end
 
   def read_input
-    read_string(@string_input_a, LENGTH_A)
-    parse_string(@number_a, @string_input_a, LENGTH_A)
+    read_string(string_input_a, LENGTH_A)
+    parse_string(number_a, string_input_a, LENGTH_A)
     read_separator
-    read_string(@string_input_b, LENGTH_B)
-    parse_string(@number_b, @string_input_b, LENGTH_B)
+    read_string(string_input_b, LENGTH_B)
+    parse_string(number_b, string_input_b, LENGTH_B)
   end
 
   def compare

@@ -29,11 +29,11 @@ RSpec.describe Program do
     create_program("reads numbers") do
       def initialize
         super
-        @number_input = short_reference()
-        read(@number_input)
-        write(@number_input)
-        read(@number_input)
-        write(@number_input)
+        define_short(:number_input)
+        read(number_input)
+        write(number_input)
+        read(number_input)
+        write(number_input)
         exit_program
       end
 
@@ -48,9 +48,9 @@ RSpec.describe Program do
     create_program("sets and gets basic reference") do
       def initialize
         super
-        @number = short_reference()
-        set_value(@number, literal(231))
-        write(@number)
+        define_short(:number)
+        self.number = literal(231)
+        write(number)
         exit_program
       end
 
@@ -61,12 +61,12 @@ RSpec.describe Program do
     create_program("indexes arrays") do
       def initialize
         super
-        @array = short_array_reference()
-        set_value(@array, literal(2))
-        set_value(index(@array, literal(1)), literal(13))
-        set_value(index(@array, literal(2)), literal(19))
-        write(index(@array, literal(1)))
-        write(index(@array, literal(2)))
+        define_short_array(:array)
+        self.array = literal(2)
+        set_value(index(array, literal(1)), literal(13))
+        set_value(index(array, literal(2)), literal(19))
+        write(index(array, literal(1)))
+        write(index(array, literal(2)))
         exit_program
       end
 
@@ -77,12 +77,9 @@ RSpec.describe Program do
     create_program("interleaves bits") do
       def initialize
         super
-        @result = short_reference()
-        set_value(
-          @result,
-          interleave(literal(0b0101), literal(0b1010))
-        )
-        write(@result)
+        define_short(:result)
+        self.result = interleave(literal(0b0101), literal(0b1010))
+        write(result)
         exit_program
       end
 
@@ -93,12 +90,9 @@ RSpec.describe Program do
     create_program("selects bits") do
       def initialize
         super
-        @result = short_reference()
-        set_value(
-          @result,
-          select(literal(0b1101), literal(0b1010))
-        )
-        write(@result)
+        define_short(:result)
+        self.result = select(literal(0b1101), literal(0b1010))
+        write(result)
         exit_program
       end
 
@@ -109,9 +103,8 @@ RSpec.describe Program do
     create_program("groups operations") do
       def initialize
         super
-        @result = short_reference()
-        set_value(
-          @result,
+        define_short(:result)
+        self.result =
           select(
             group(
               interleave(
@@ -121,8 +114,7 @@ RSpec.describe Program do
             ),
             literal(0b1010)
           )
-        )
-        write(@result)
+        write(result)
         exit_program
       end
 
@@ -133,15 +125,14 @@ RSpec.describe Program do
     create_program("supergroups operations") do
       def initialize
         super
-        @array = short_array_reference()
-        set_value(@array, literal(2))
-        set_value(index(@array, literal(1)), literal(13))
-        set_value(index(@array, literal(2)), literal(19))
-        @result = short_reference()
-        set_value(
-          @result,
+        define_short_array(:array)
+        self.array = literal(2)
+        set_value(index(array, literal(1)), literal(13))
+        set_value(index(array, literal(2)), literal(19))
+        define_short(:result)
+        self.result =
           index(
-            @array,
+            array,
             supergroup(
               select(
                 group(
@@ -154,8 +145,7 @@ RSpec.describe Program do
               )
             )
           )
-        )
-        write(@result)
+        write(result)
         exit_program
       end
 
@@ -166,12 +156,9 @@ RSpec.describe Program do
     create_program("shifts bits left one") do
       def initialize
         super
-        @result = short_reference()
-        set_value(
-          @result,
-          shift_left_one(literal(0b0111))
-        )
-        write(@result)
+        define_short(:result)
+        self.result = shift_left_one(literal(0b0111))
+        write(result)
         exit_program
       end
 
@@ -182,13 +169,13 @@ RSpec.describe Program do
     create_program("adds") do
       def initialize
         super
-        @result = short_reference()
+        define_short(:result)
         set_addition(
-          @result,
+          result,
           literal(329),
           literal(210)
         )
-        write(@result)
+        write(result)
         exit_program
       end
 
@@ -199,13 +186,13 @@ RSpec.describe Program do
     create_program("subtracts") do
       def initialize
         super
-        @result = short_reference()
+        define_short(:result)
         set_subtraction(
-          @result,
+          result,
           literal(329),
           literal(210)
         )
-        write(@result)
+        write(result)
         exit_program
       end
 
@@ -216,12 +203,12 @@ RSpec.describe Program do
     create_program("reads text") do
       def initialize
         super
-        @input = short_array_reference()
-        set_value(@input, literal(3))
-        read_string(@input, 3)
-        write(index(@input, literal(1)))
-        write(index(@input, literal(2)))
-        write(index(@input, literal(3)))
+        define_short_array(:input)
+        self.input = literal(3)
+        read_string(input, 3)
+        write(index(input, literal(1)))
+        write(index(input, literal(2)))
+        write(index(input, literal(3)))
         exit_program
       end
 
@@ -236,12 +223,12 @@ RSpec.describe Program do
     create_program("reads binary") do
       def initialize
         super
-        @number = short_reference()
-        @input = short_array_reference()
-        set_value(@input, literal(8))
-        read_string(@input, 8)
-        parse_string(@number, @input, 8)
-        write(@number)
+        define_short(:number)
+        define_short_array(:input)
+        self.input = literal(8)
+        read_string(input, 8)
+        parse_string(number, input, 8)
+        write(number)
         exit_program
       end
 
