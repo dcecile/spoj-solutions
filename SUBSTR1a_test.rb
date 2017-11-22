@@ -29,11 +29,11 @@ RSpec.describe Program do
     create_program("reads numbers") do
       def initialize
         super
-        define_short(:number_input)
-        read(number_input)
-        write(number_input)
-        read(number_input)
-        write(number_input)
+        @number_input = make_short
+        read(@number_input)
+        write(@number_input)
+        read(@number_input)
+        write(@number_input)
         exit_program
       end
 
@@ -48,9 +48,9 @@ RSpec.describe Program do
     create_program("sets and gets basic reference") do
       def initialize
         super
-        define_short(:number)
-        self.number = literal(231)
-        write(number)
+        @number = make_short
+        @number.value = literal(231)
+        write(@number)
         exit_program
       end
 
@@ -61,12 +61,11 @@ RSpec.describe Program do
     create_program("indexes arrays") do
       def initialize
         super
-        define_short_array(:array)
-        self.array = literal(2)
-        set_value(index(array, literal(1)), literal(13))
-        set_value(index(array, literal(2)), literal(19))
-        write(index(array, literal(1)))
-        write(index(array, literal(2)))
+        @array = make_short_array(value: literal(2))
+        @array[literal(1)].value = literal(13)
+        @array[literal(2)].value = literal(19)
+        write(@array[literal(1)])
+        write(@array[literal(2)])
         exit_program
       end
 
@@ -77,9 +76,9 @@ RSpec.describe Program do
     create_program("interleaves bits") do
       def initialize
         super
-        define_short(:result)
-        self.result = interleave(literal(0b0101), literal(0b1010))
-        write(result)
+        @result = make_short
+        @result.value = interleave(literal(0b0101), literal(0b1010))
+        write(@result)
         exit_program
       end
 
@@ -90,9 +89,9 @@ RSpec.describe Program do
     create_program("selects bits") do
       def initialize
         super
-        define_short(:result)
-        self.result = select(literal(0b1101), literal(0b1010))
-        write(result)
+        @result = make_short
+        @result.value = select(literal(0b1101), literal(0b1010))
+        write(@result)
         exit_program
       end
 
@@ -103,8 +102,8 @@ RSpec.describe Program do
     create_program("groups operations") do
       def initialize
         super
-        define_short(:result)
-        self.result =
+        @result = make_short
+        @result.value =
           select(
             group(
               interleave(
@@ -114,7 +113,7 @@ RSpec.describe Program do
             ),
             literal(0b1010)
           )
-        write(result)
+        write(@result)
         exit_program
       end
 
@@ -125,14 +124,12 @@ RSpec.describe Program do
     create_program("supergroups operations") do
       def initialize
         super
-        define_short_array(:array)
-        self.array = literal(2)
-        set_value(index(array, literal(1)), literal(13))
-        set_value(index(array, literal(2)), literal(19))
-        define_short(:result)
-        self.result =
-          index(
-            array,
+        @array = make_short_array(value: literal(2))
+        @array[literal(1)].value = literal(13)
+        @array[literal(2)].value = literal(19)
+        @result = make_short
+        @result.value =
+          @array[
             supergroup(
               select(
                 group(
@@ -144,8 +141,8 @@ RSpec.describe Program do
                 literal(0b1010)
               )
             )
-          )
-        write(result)
+          ]
+        write(@result)
         exit_program
       end
 
@@ -156,9 +153,9 @@ RSpec.describe Program do
     create_program("shifts bits left one") do
       def initialize
         super
-        define_short(:result)
-        self.result = shift_left_one(literal(0b0111))
-        write(result)
+        @result = make_short
+        @result.value = shift_left_one(literal(0b0111))
+        write(@result)
         exit_program
       end
 
@@ -169,13 +166,13 @@ RSpec.describe Program do
     create_program("adds") do
       def initialize
         super
-        define_short(:result)
+        @result = make_short
         set_addition(
-          result,
+          @result,
           literal(329),
           literal(210)
         )
-        write(result)
+        write(@result)
         exit_program
       end
 
@@ -186,13 +183,13 @@ RSpec.describe Program do
     create_program("subtracts") do
       def initialize
         super
-        define_short(:result)
+        @result = make_short
         set_subtraction(
-          result,
+          @result,
           literal(329),
           literal(210)
         )
-        write(result)
+        write(@result)
         exit_program
       end
 
@@ -203,12 +200,11 @@ RSpec.describe Program do
     create_program("reads text") do
       def initialize
         super
-        define_short_array(:input)
-        self.input = literal(3)
-        read_string(input, 3)
-        write(index(input, literal(1)))
-        write(index(input, literal(2)))
-        write(index(input, literal(3)))
+        @input = make_short_array(value: literal(3))
+        read_string(@input, 3)
+        write(@input[literal(1)])
+        write(@input[literal(2)])
+        write(@input[literal(3)])
         exit_program
       end
 
@@ -223,12 +219,11 @@ RSpec.describe Program do
     create_program("reads binary") do
       def initialize
         super
-        define_short(:number)
-        define_short_array(:input)
-        self.input = literal(8)
-        read_string(input, 8)
-        parse_string(number, input, 8)
-        write(number)
+        @number = make_short
+        @input = make_short_array(value: literal(8))
+        read_string(@input, 8)
+        parse_string(@number, @input, 8)
+        write(@number)
         exit_program
       end
 
@@ -249,6 +244,22 @@ RSpec.describe Program do
 
       def self.output
         "hello ick world\n"
+      end
+    end,
+    create_program("solves") do
+      include SubstringSolution
+
+      def initialize
+        super
+        run_solution
+      end
+
+      def self.input
+        "1101 10"
+      end
+
+      def self.output
+        output_numerals(0b1101, 0b10)
       end
     end
   ]
