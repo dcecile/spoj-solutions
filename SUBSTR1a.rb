@@ -1,42 +1,5 @@
 require 'open3'
 
-ExecutionResult = Struct.new(:program_text, :input, :output, :status) do
-  def join
-    puts output
-    abort unless status.success?
-  end
-end
-
-Reference = Struct.new(:program, :type, :name) do
-  def to_s
-    "#{type}#{name}"
-  end
-
-  def value=(value)
-    program.set_value(self, value)
-  end
-
-  def [](index)
-    IndexReference.new(self, index)
-  end
-end
-
-IndexReference = Struct.new(:reference, :index) do
-  def to_s
-    "#{reference}SUB#{index}"
-  end
-
-  def value=(value)
-    reference.program.set_value(self, value)
-  end
-end
-
-Label = Struct.new(:line) do
-  def compile
-    "(#{line})"
-  end
-end
-
 module Listing
   POLITENESS_LEVEL = 5
 
@@ -49,6 +12,12 @@ module Listing
     @buffer << "#{statement}\n"
     @politeness_counter =
       (@politeness_counter - 1) % POLITENESS_LEVEL
+  end
+
+  Label = Struct.new(:line) do
+    def compile
+      "(#{line})"
+    end
   end
 
   def label(line)
@@ -65,6 +34,13 @@ module Listing
 
   def write_source(name)
     IO.write("#{name}.i", program_text)
+  end
+
+  ExecutionResult = Struct.new(:program_text, :input, :output, :status) do
+    def join
+      puts output
+      abort unless status.success?
+    end
   end
 
   def compile(name)
@@ -92,15 +68,15 @@ module Statements
   end
 
   def set_value(output, value)
-    statement("#{output} <- #{value}")
+    statement("#{output.compile} <- #{value.compile}")
   end
 
   def read(output)
-    statement("WRITE IN #{output}")
+    statement("WRITE IN #{output.compile}")
   end
 
   def write(value)
-    statement("READ OUT #{value}")
+    statement("READ OUT #{value.compile}")
   end
 
   def goto(label)
@@ -117,10 +93,28 @@ module References
     @next_name = 10
   end
 
-  def get_new_name
-    result = @next_name
-    @next_name += 1
-    result
+  Reference = Struct.new(:program, :type, :name) do
+    def compile
+      "#{type}#{name}"
+    end
+
+    def value=(value)
+      program.set_value(self, value)
+    end
+
+    def [](index)
+      IndexReference.new(self, index)
+    end
+  end
+
+  IndexReference = Struct.new(:reference, :index) do
+    def compile
+      "#{reference.compile}SUB#{index.compile}"
+    end
+
+    def value=(value)
+      reference.program.set_value(self, value)
+    end
   end
 
   def make_short(name: get_new_name, value: nil)
@@ -134,31 +128,63 @@ module References
     reference.value = value if value
     reference
   end
+
+  def get_new_name
+    result = @next_name
+    @next_name += 1
+    result
+  end
 end
 
 module Expressions
-  def literal(value)
-    "\##{value}"
+  Literal = Struct.new(:value) do
+    def compile
+      "\##{value}"
+    end
   end
 
-  def index(array_reference, value)
-    "#{array_reference}SUB#{value}"
+  def literal(value)
+    Literal.new(value)
+  end
+
+  InterleaveOp = Struct.new(:x, :y) do
+    def compile
+      "#{x.compile}$#{y.compile}"
+    end
   end
 
   def interleave(x, y)
-    "#{x}$#{y}"
+    InterleaveOp.new(x, y)
+  end
+
+  SelectOp = Struct.new(:x, :y) do
+    def compile
+      "#{x.compile}~#{y.compile}"
+    end
   end
 
   def select(x, y)
-    "#{x}~#{y}"
+    SelectOp.new(x, y)
+  end
+
+  GroupOp = Struct.new(:x) do
+    def compile
+      "'#{x.compile}'"
+    end
   end
 
   def group(x)
-    "'#{x}'"
+    GroupOp.new(x)
+  end
+
+  SupergroupOp = Struct.new(:x) do
+    def compile
+      "\"#{x.compile}\""
+    end
   end
 
   def supergroup(x)
-    "\"#{x}\""
+    SupergroupOp.new(x)
   end
 
   def shift_left_one(x)
@@ -221,7 +247,7 @@ module BinaryIO
   def parse_string(output, input, length)
     set_value(output, literal(0))
     (1..length).each do |i|
-      current_char = index(input, literal(i))
+      current_char = input[literal(i)]
       set_addition(
         output,
         shift_left_one(output),
