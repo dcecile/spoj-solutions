@@ -54,7 +54,72 @@ module Listing
   end
 end
 
+module Expressions
+  module Literal
+    def compile
+      "\##{self}"
+    end
+  end
+
+  module LiteralRefinement
+    refine Integer do
+      include Literal
+    end
+  end
+
+  using LiteralRefinement
+
+  InterleaveOp = Struct.new(:x, :y) do
+    def compile
+      "#{x.compile}$#{y.compile}"
+    end
+  end
+
+  def interleave(x, y)
+    InterleaveOp.new(x, y)
+  end
+
+  SelectOp = Struct.new(:x, :y) do
+    def compile
+      "#{x.compile}~#{y.compile}"
+    end
+  end
+
+  def select(x, y)
+    SelectOp.new(x, y)
+  end
+
+  GroupOp = Struct.new(:x) do
+    def compile
+      "'#{x.compile}'"
+    end
+  end
+
+  def group(x)
+    GroupOp.new(x)
+  end
+
+  SupergroupOp = Struct.new(:x) do
+    def compile
+      "\"#{x.compile}\""
+    end
+  end
+
+  def supergroup(x)
+    SupergroupOp.new(x)
+  end
+
+  def shift_left_one(x)
+    select(
+      group(
+        interleave(x, 0)),
+      0b1010_1010_1010_1011)
+  end
+end
+
 module Statements
+  using Expressions::LiteralRefinement
+
   def statement(text, label=nil)
     label_text = label&.compile&.rjust(3)
     command_text =
@@ -89,6 +154,8 @@ module Statements
 end
 
 module References
+  using Expressions::LiteralRefinement
+
   def initialize_references
     @next_name = 10
   end
@@ -136,65 +203,6 @@ module References
   end
 end
 
-module Expressions
-  Literal = Struct.new(:value) do
-    def compile
-      "\##{value}"
-    end
-  end
-
-  def literal(value)
-    Literal.new(value)
-  end
-
-  InterleaveOp = Struct.new(:x, :y) do
-    def compile
-      "#{x.compile}$#{y.compile}"
-    end
-  end
-
-  def interleave(x, y)
-    InterleaveOp.new(x, y)
-  end
-
-  SelectOp = Struct.new(:x, :y) do
-    def compile
-      "#{x.compile}~#{y.compile}"
-    end
-  end
-
-  def select(x, y)
-    SelectOp.new(x, y)
-  end
-
-  GroupOp = Struct.new(:x) do
-    def compile
-      "'#{x.compile}'"
-    end
-  end
-
-  def group(x)
-    GroupOp.new(x)
-  end
-
-  SupergroupOp = Struct.new(:x) do
-    def compile
-      "\"#{x.compile}\""
-    end
-  end
-
-  def supergroup(x)
-    SupergroupOp.new(x)
-  end
-
-  def shift_left_one(x)
-    select(
-      group(
-        interleave(x, literal(0))),
-      literal(0b1010_1010_1010_1011))
-  end
-end
-
 module StandardLibrary
   def initialize_standard_library
     @standard_plus = label(1009)
@@ -221,15 +229,15 @@ end
 
 module BinaryIO
   def initialize_binary_io
-    @last_input = make_short(value: literal(0))
-    @last_output = make_short(value: literal(0))
-    @string_output = make_short_array(value: literal(1))
+    @last_input = make_short(value: 0)
+    @last_output = make_short(value: 0)
+    @string_output = make_short_array(value: 1)
   end
 
   def read_string(output, length)
     read(output)
     (1..length).each do |i|
-      current_char = output[literal(i)]
+      current_char = output[i]
       set_addition(
         current_char,
         @last_input,
@@ -238,22 +246,22 @@ module BinaryIO
         current_char,
         select(
           group(current_char),
-          literal(0xFF))
+          0xFF)
       )
       @last_input.value = current_char
     end
   end
 
   def parse_string(output, input, length)
-    set_value(output, literal(0))
+    set_value(output, 0)
     (1..length).each do |i|
-      current_char = input[literal(i)]
+      current_char = input[i]
       set_addition(
         output,
         shift_left_one(output),
         select(
           group(current_char),
-          literal(0x01)))
+          0x01))
     end
   end
 
@@ -268,12 +276,12 @@ module BinaryIO
     value = char.codepoints.first
     reversed_value = reverse_bits(value)
     set_subtraction(
-      @string_output[literal(1)],
+      @string_output[1],
       @last_output,
-      literal(reversed_value)
+      reversed_value
     )
     write(@string_output)
-    @last_output.value = literal(reversed_value)
+    @last_output.value = reversed_value
   end
 
   def write_string(string)
@@ -304,9 +312,9 @@ module SubstringSolution
   LENGTH_B = 2
 
   def initialize_solution
-    @string_input_a = make_short_array(value: literal(LENGTH_A))
-    @string_input_b = make_short_array(value: literal(LENGTH_A))
-    @string_input_separator = make_short_array(value: literal(1))
+    @string_input_a = make_short_array(value: LENGTH_A)
+    @string_input_b = make_short_array(value: LENGTH_A)
+    @string_input_separator = make_short_array(value: 1)
     @number_a = make_short
     @number_b = make_short
   end

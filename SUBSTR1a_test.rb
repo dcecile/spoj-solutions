@@ -17,8 +17,8 @@ RSpec.describe Program do
     create_program("writes numbers") do
       def initialize
         super
-        write(literal(400))
-        write(literal(632))
+        write(400)
+        write(632)
         exit_program
       end
 
@@ -49,7 +49,7 @@ RSpec.describe Program do
       def initialize
         super
         @number = make_short
-        @number.value = literal(231)
+        @number.value = 231
         write(@number)
         exit_program
       end
@@ -61,11 +61,11 @@ RSpec.describe Program do
     create_program("indexes arrays") do
       def initialize
         super
-        @array = make_short_array(value: literal(2))
-        @array[literal(1)].value = literal(13)
-        @array[literal(2)].value = literal(19)
-        write(@array[literal(1)])
-        write(@array[literal(2)])
+        @array = make_short_array(value: 2)
+        @array[1].value = 13
+        @array[2].value = 19
+        write(@array[1])
+        write(@array[2])
         exit_program
       end
 
@@ -77,7 +77,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = interleave(literal(0b0101), literal(0b1010))
+        @result.value = interleave(0b0101, 0b1010)
         write(@result)
         exit_program
       end
@@ -90,7 +90,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = select(literal(0b1101), literal(0b1010))
+        @result.value = select(0b1101, 0b1010)
         write(@result)
         exit_program
       end
@@ -107,11 +107,11 @@ RSpec.describe Program do
           select(
             group(
               interleave(
-                literal(0b0101),
-                literal(0b1010)
+                0b0101,
+                0b1010
               )
             ),
-            literal(0b1010)
+            0b1010
           )
         write(@result)
         exit_program
@@ -124,9 +124,9 @@ RSpec.describe Program do
     create_program("supergroups operations") do
       def initialize
         super
-        @array = make_short_array(value: literal(2))
-        @array[literal(1)].value = literal(13)
-        @array[literal(2)].value = literal(19)
+        @array = make_short_array(value: 2)
+        @array[1].value = 13
+        @array[2].value = 19
         @result = make_short
         @result.value =
           @array[
@@ -134,11 +134,11 @@ RSpec.describe Program do
               select(
                 group(
                   interleave(
-                    literal(0b0101),
-                    literal(0b1010)
+                    0b0101,
+                    0b1010
                   )
                 ),
-                literal(0b1010)
+                0b1010
               )
             )
           ]
@@ -154,7 +154,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = shift_left_one(literal(0b0111))
+        @result.value = shift_left_one(0b0111)
         write(@result)
         exit_program
       end
@@ -169,8 +169,8 @@ RSpec.describe Program do
         @result = make_short
         set_addition(
           @result,
-          literal(329),
-          literal(210)
+          329,
+          210
         )
         write(@result)
         exit_program
@@ -186,8 +186,8 @@ RSpec.describe Program do
         @result = make_short
         set_subtraction(
           @result,
-          literal(329),
-          literal(210)
+          329,
+          210
         )
         write(@result)
         exit_program
@@ -200,11 +200,11 @@ RSpec.describe Program do
     create_program("reads text") do
       def initialize
         super
-        @input = make_short_array(value: literal(3))
+        @input = make_short_array(value: 3)
         read_string(@input, 3)
-        write(@input[literal(1)])
-        write(@input[literal(2)])
-        write(@input[literal(3)])
+        write(@input[1])
+        write(@input[2])
+        write(@input[3])
         exit_program
       end
 
@@ -220,7 +220,7 @@ RSpec.describe Program do
       def initialize
         super
         @number = make_short
-        @input = make_short_array(value: literal(8))
+        @input = make_short_array(value: 8)
         read_string(@input, 8)
         parse_string(@number, @input, 8)
         write(@number)
