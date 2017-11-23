@@ -55,70 +55,85 @@ module Listing
 end
 
 module Expressions
+  module Ops
+    ops = %i(
+      interleave
+      select
+      group
+      supergroup
+      shift_left_one
+    )
+    ops.each do |op|
+      define_method(op) do |*args|
+        OpsImpl.send(op, self, *args)
+      end
+    end
+  end
+
   module Literal
+    include Ops
+
     def compile
       "\##{self}"
     end
   end
 
-  module LiteralRefinement
+  module Refinements
     refine Integer do
       include Literal
     end
   end
 
-  using LiteralRefinement
+  using Refinements
 
-  InterleaveOp = Struct.new(:x, :y) do
+  class Primitive
+    include Ops
+
+    def initialize(&compile_block)
+      @compile_block = compile_block
+    end
+
     def compile
-      "#{x.compile}$#{y.compile}"
+      @compile_block.call
     end
   end
 
-  def interleave(x, y)
-    InterleaveOp.new(x, y)
-  end
-
-  SelectOp = Struct.new(:x, :y) do
-    def compile
-      "#{x.compile}~#{y.compile}"
+  module OpsImpl
+    def self.interleave(x, y)
+      Primitive.new do
+        "#{x.compile}$#{y.compile}"
+      end
     end
-  end
 
-  def select(x, y)
-    SelectOp.new(x, y)
-  end
-
-  GroupOp = Struct.new(:x) do
-    def compile
-      "'#{x.compile}'"
+    def self.select(x, y)
+      Primitive.new do
+        "#{x.compile}~#{y.compile}"
+      end
     end
-  end
 
-  def group(x)
-    GroupOp.new(x)
-  end
-
-  SupergroupOp = Struct.new(:x) do
-    def compile
-      "\"#{x.compile}\""
+    def self.group(x)
+      Primitive.new do
+        "'#{x.compile}'"
+      end
     end
-  end
 
-  def supergroup(x)
-    SupergroupOp.new(x)
-  end
+    def self.supergroup(x)
+      Primitive.new do
+        "\"#{x.compile}\""
+      end
+    end
 
-  def shift_left_one(x)
-    select(
-      group(
-        interleave(x, 0)),
-      0b1010_1010_1010_1011)
+    def self.shift_left_one(x)
+      x
+        .interleave(0)
+        .group
+        .select(0b1010_1010_1010_1011)
+    end
   end
 end
 
 module Statements
-  using Expressions::LiteralRefinement
+  using Expressions::Refinements
 
   def statement(text, label=nil)
     label_text = label&.compile&.rjust(3)
@@ -154,13 +169,15 @@ module Statements
 end
 
 module References
-  using Expressions::LiteralRefinement
+  using Expressions::Refinements
 
   def initialize_references
     @next_name = 10
   end
 
   Reference = Struct.new(:program, :type, :name) do
+    include Expressions::Ops
+
     def compile
       "#{type}#{name}"
     end
@@ -175,6 +192,8 @@ module References
   end
 
   IndexReference = Struct.new(:reference, :index) do
+    include Expressions::Ops
+
     def compile
       "#{reference.compile}SUB#{index.compile}"
     end
@@ -244,9 +263,7 @@ module BinaryIO
         current_char)
       set_value(
         current_char,
-        select(
-          group(current_char),
-          0xFF)
+        current_char.group.select(0xFF)
       )
       @last_input.value = current_char
     end
@@ -258,10 +275,8 @@ module BinaryIO
       current_char = input[i]
       set_addition(
         output,
-        shift_left_one(output),
-        select(
-          group(current_char),
-          0x01))
+        output.shift_left_one,
+        current_char.group.select(0x01))
     end
   end
 

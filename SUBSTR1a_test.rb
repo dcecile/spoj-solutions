@@ -2,6 +2,8 @@ require "tmpdir"
 require "SUBSTR1a_test_helper"
 require "SUBSTR1a"
 
+using Expressions::Refinements
+
 RSpec.describe Program do
   test_programs = [
     create_program("exits") do
@@ -77,7 +79,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = interleave(0b0101, 0b1010)
+        @result.value = 0b0101.interleave(0b1010)
         write(@result)
         exit_program
       end
@@ -90,7 +92,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = select(0b1101, 0b1010)
+        @result.value = 0b1101.select(0b1010)
         write(@result)
         exit_program
       end
@@ -104,15 +106,10 @@ RSpec.describe Program do
         super
         @result = make_short
         @result.value =
-          select(
-            group(
-              interleave(
-                0b0101,
-                0b1010
-              )
-            ),
-            0b1010
-          )
+          0b0101
+          .interleave(0b1010)
+          .group
+          .select(0b1010)
         write(@result)
         exit_program
       end
@@ -130,17 +127,11 @@ RSpec.describe Program do
         @result = make_short
         @result.value =
           @array[
-            supergroup(
-              select(
-                group(
-                  interleave(
-                    0b0101,
-                    0b1010
-                  )
-                ),
-                0b1010
-              )
-            )
+            0b0101
+            .interleave(0b1010)
+            .group
+            .select(0b1010)
+            .supergroup
           ]
         write(@result)
         exit_program
@@ -154,7 +145,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value = shift_left_one(0b0111)
+        @result.value = 0b0111.shift_left_one
         write(@result)
         exit_program
       end
