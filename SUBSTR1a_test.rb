@@ -164,14 +164,53 @@ RSpec.describe Program do
     create_program("shifts bits left one") do
       def initialize
         super
-        @result = make_short
-        @result.value = 0b0111.shift_left_one
+        @result = make_short(value: 0b0111)
+        @result.value = @result << 1
         write(@result)
         exit_program
       end
 
       def self.output
         output_numerals(0b1110)
+      end
+    end,
+    create_program("shifts bits left five") do
+      def initialize
+        super
+        @result = make_short(value: 0b0111)
+        @result.value = @result << 5
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b111 << 5)
+      end
+    end,
+    create_program("shifts bits right one") do
+      def initialize
+        super
+        @result = make_short(value: 0b0111)
+        @result.value = @result >> 1
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0011)
+      end
+    end,
+    create_program("shifts bits right five") do
+      def initialize
+        super
+        @result = make_short(value: 0b0111_0110)
+        @result.value = @result >> 5
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0111_0110 >> 5)
       end
     end,
     create_program("adds") do

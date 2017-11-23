@@ -56,16 +56,24 @@ end
 
 module Expressions
   module Ops
-    ops = %i(
-      interleave
-      select
-      shift_left_one
-    )
-    ops.each do |op|
-      define_method(op) do |*args|
-        OpsImpl.send(op, self, *args)
+    def self.define_binary_ops(ops)
+      ops.each do |op|
+        define_method(op) do |other|
+          if !self.is_a?(Ops) && !other.is_a?(Ops) && self.respond_to?(op)
+            self.send(op, other)
+          else
+            OpsImpl.send(op, self, other)
+          end
+        end
       end
     end
+
+    define_binary_ops(%i(
+      interleave
+      select
+      <<
+      >>
+    ))
   end
 
   module Literal
@@ -132,10 +140,18 @@ module Expressions
       end
     end
 
-    def self.shift_left_one(x)
-      x
-        .interleave(0)
-        .select(0b1010_1010_1010_1011)
+    def self.<<(x, y)
+      result = x
+      y.times do
+        result = result
+          .interleave(0)
+          .select(0b1010_1010_1010_1011)
+      end
+      result
+    end
+
+    def self.>>(x, y)
+      x.select((0xFF << y) & 0xFF)
     end
   end
 end
@@ -283,7 +299,7 @@ module BinaryIO
       current_char = input[i]
       set_addition(
         output,
-        output.shift_left_one,
+        output << 1,
         current_char.select(0x01))
     end
   end
