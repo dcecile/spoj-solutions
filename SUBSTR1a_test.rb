@@ -141,6 +141,35 @@ RSpec.describe Program do
         output_numerals(13)
       end
     end,
+    create_program("nests groups and supergroups") do
+      def initialize
+        super
+        @result = make_short
+        @result.value =
+          0b1111
+          .interleave(0)
+          .group
+          .select(0b1111)
+          .supergroup
+          .interleave(0)
+          .group
+          .select(0b1111)
+          .supergroup
+          .interleave(
+            0b1111_1111
+            .select(0b1111)
+            .supergroup
+          )
+          .group
+          .select(0b0111_1110)
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b10_1010)
+      end
+    end,
     create_program("shifts bits left one") do
       def initialize
         super
