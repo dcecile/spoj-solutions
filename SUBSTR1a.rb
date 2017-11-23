@@ -59,8 +59,6 @@ module Expressions
     ops = %i(
       interleave
       select
-      group
-      supergroup
       shift_left_one
     )
     ops.each do |op|
@@ -73,7 +71,7 @@ module Expressions
   module Literal
     include Ops
 
-    def compile
+    def compile(group)
       "\##{self}"
     end
   end
@@ -93,47 +91,57 @@ module Expressions
       @compile_block = compile_block
     end
 
-    def compile
-      @compile_block.call
+    def compile(group)
+      @compile_block.call(group)
     end
+  end
+
+  class Group
+    def initialize(text, next_group)
+      @text = text
+      @next_group = next_group
+    end
+
+    def compile(inner)
+      [@text, inner, @text].join
+    end
+
+    def next(inner)
+      inner.compile(Group.const_get(@next_group))
+    end
+
+    def self.compile(inner)
+      inner.compile(ZERO)
+    end
+
+    ZERO = new("", :ONE)
+    ONE = new("'", :TWO)
+    TWO = new('"', :ONE)
   end
 
   module OpsImpl
     def self.interleave(x, y)
-      Primitive.new do
-        "#{x.compile}$#{y.compile}"
+      Primitive.new do |group|
+        group.compile("#{group.next(x)}$#{group.next(y)}")
       end
     end
 
     def self.select(x, y)
-      Primitive.new do
-        "#{x.compile}~#{y.compile}"
-      end
-    end
-
-    def self.group(x)
-      Primitive.new do
-        "'#{x.compile}'"
-      end
-    end
-
-    def self.supergroup(x)
-      Primitive.new do
-        "\"#{x.compile}\""
+      Primitive.new do |group|
+        group.compile("#{group.next(x)}~#{group.next(y)}")
       end
     end
 
     def self.shift_left_one(x)
       x
         .interleave(0)
-        .group
         .select(0b1010_1010_1010_1011)
     end
   end
 end
 
 module Statements
-  using Expressions::Refinements
+  include Expressions
 
   def statement(text, label=nil)
     label_text = label&.compile&.rjust(3)
@@ -148,15 +156,15 @@ module Statements
   end
 
   def set_value(output, value)
-    statement("#{output.compile} <- #{value.compile}")
+    statement("#{Group.compile(output)} <- #{Group.compile(value)}")
   end
 
   def read(output)
-    statement("WRITE IN #{output.compile}")
+    statement("WRITE IN #{Group.compile(output)}")
   end
 
   def write(value)
-    statement("READ OUT #{value.compile}")
+    statement("READ OUT #{Group.compile(value)}")
   end
 
   def goto(label)
@@ -169,16 +177,16 @@ module Statements
 end
 
 module References
-  using Expressions::Refinements
+  include Expressions
 
   def initialize_references
     @next_name = 10
   end
 
   Reference = Struct.new(:program, :type, :name) do
-    include Expressions::Ops
+    include Ops
 
-    def compile
+    def compile(group)
       "#{type}#{name}"
     end
 
@@ -192,10 +200,10 @@ module References
   end
 
   IndexReference = Struct.new(:reference, :index) do
-    include Expressions::Ops
+    include Ops
 
-    def compile
-      "#{reference.compile}SUB#{index.compile}"
+    def compile(group)
+      group.compile("#{group.next(reference)}SUB#{group.next(index)}")
     end
 
     def value=(value)
@@ -263,7 +271,7 @@ module BinaryIO
         current_char)
       set_value(
         current_char,
-        current_char.group.select(0xFF)
+        current_char.select(0xFF)
       )
       @last_input.value = current_char
     end
@@ -276,7 +284,7 @@ module BinaryIO
       set_addition(
         output,
         output.shift_left_one,
-        current_char.group.select(0x01))
+        current_char.select(0x01))
     end
   end
 

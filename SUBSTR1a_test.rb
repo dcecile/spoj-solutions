@@ -101,14 +101,13 @@ RSpec.describe Program do
         output_numerals(0b0010)
       end
     end,
-    create_program("groups operations") do
+    create_program("nests one group") do
       def initialize
         super
         @result = make_short
         @result.value =
           0b0101
           .interleave(0b1010)
-          .group
           .select(0b1010)
         write(@result)
         exit_program
@@ -118,7 +117,7 @@ RSpec.describe Program do
         output_numerals(0b0001)
       end
     end,
-    create_program("supergroups operations") do
+    create_program("nests two groups") do
       def initialize
         super
         @array = make_short_array(value: 2)
@@ -129,9 +128,7 @@ RSpec.describe Program do
           @array[
             0b0101
             .interleave(0b1010)
-            .group
             .select(0b1010)
-            .supergroup
           ]
         write(@result)
         exit_program
@@ -141,26 +138,20 @@ RSpec.describe Program do
         output_numerals(13)
       end
     end,
-    create_program("nests groups and supergroups") do
+    create_program("nests multiple groups") do
       def initialize
         super
         @result = make_short
         @result.value =
           0b1111
           .interleave(0)
-          .group
           .select(0b1111)
-          .supergroup
           .interleave(0)
-          .group
           .select(0b1111)
-          .supergroup
           .interleave(
             0b1111_1111
             .select(0b1111)
-            .supergroup
           )
-          .group
           .select(0b0111_1110)
         write(@result)
         exit_program
