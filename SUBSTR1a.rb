@@ -56,23 +56,31 @@ end
 
 module Expressions
   module Ops
-    def self.define_binary_ops(ops)
+    def self.define_ops(ops)
       ops.each do |op|
-        define_method(op) do |other|
-          if !self.is_a?(Ops) && !other.is_a?(Ops) && self.respond_to?(op)
-            self.send(op, other)
+        define_method(op) do |other=nil|
+          is_native_self_call = !self.is_a?(Ops) && self.respond_to?(op)
+          is_native_other_param = other.nil? || !other.is_a?(Ops)
+          if is_native_self_call && is_native_other_param
+            self.send(op, *[other].compact)
           else
-            OpsImpl.send(op, self, other)
+            OpsImpl.send(op, self, *[other].compact)
           end
         end
       end
     end
 
-    define_binary_ops(%i(
+    define_ops(%i(
       interleave
       select
+      self_and
+      self_or
+      self_xor
       <<
       >>
+      &
+      |
+      ^
     ))
   end
 
@@ -94,6 +102,18 @@ module Expressions
 
   class Primitive
     include Ops
+
+    def self.new_binary(operator, x, y)
+      new do |group|
+        group.compile([group.next(x), operator, group.next(y)].join)
+      end
+    end
+
+    def self.new_unary(operator, x)
+      new do |group|
+        group.compile([operator, group.next(x)].join)
+      end
+    end
 
     def initialize(&compile_block)
       @compile_block = compile_block
@@ -129,15 +149,23 @@ module Expressions
 
   module OpsImpl
     def self.interleave(x, y)
-      Primitive.new do |group|
-        group.compile("#{group.next(x)}$#{group.next(y)}")
-      end
+      Primitive.new_binary("$", x, y)
     end
 
     def self.select(x, y)
-      Primitive.new do |group|
-        group.compile("#{group.next(x)}~#{group.next(y)}")
-      end
+      Primitive.new_binary("~", x, y)
+    end
+
+    def self.self_and(x)
+      Primitive.new_unary("&", x)
+    end
+
+    def self.self_or(x)
+      Primitive.new_unary("V", x)
+    end
+
+    def self.self_xor(x)
+      Primitive.new_unary("?", x)
     end
 
     def self.<<(x, y)
@@ -151,7 +179,23 @@ module Expressions
     end
 
     def self.>>(x, y)
-      x.select((0xFF << y) & 0xFF)
+      x.select((0xFFFF << y) & 0xFFFF)
+    end
+
+    def self.bitwise(x, y, unary_op)
+      x.interleave(y).send(unary_op).select(0.interleave(0xFFFF))
+    end
+
+    def self.&(x, y)
+      bitwise(x, y, :self_and)
+    end
+
+    def self.|(x, y)
+      bitwise(x, y, :self_or)
+    end
+
+    def self.^(x, y)
+      bitwise(x, y, :self_xor)
     end
   end
 end
@@ -280,27 +324,16 @@ module BinaryIO
   def read_string(output, length)
     read(output)
     (1..length).each do |i|
-      current_char = output[i]
-      set_addition(
-        current_char,
-        @last_input,
-        current_char)
-      set_value(
-        current_char,
-        current_char.select(0xFF)
-      )
-      @last_input.value = current_char
+      set_addition(output[i], @last_input, output[i])
+      output[i].value = output[i] & 0xFF
+      @last_input.value = output[i]
     end
   end
 
   def parse_string(output, input, length)
-    set_value(output, 0)
+    output.value = 0
     (1..length).each do |i|
-      current_char = input[i]
-      set_addition(
-        output,
-        output << 1,
-        current_char.select(0x01))
+      output.value = (output << 1) | (input[i] & 1)
     end
   end
 

@@ -101,6 +101,84 @@ RSpec.describe Program do
         output_numerals(0b0010)
       end
     end,
+    create_program("ands own bits") do
+      def initialize
+        super
+        @result = make_short
+        @result.value = 0b1101.self_and
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0100)
+      end
+    end,
+    create_program("ors own bits") do
+      def initialize
+        super
+        @result = make_short
+        @result.value = 0b1101.self_or.select(0x7FFF)
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b1111)
+      end
+    end,
+    create_program("xors own bits") do
+      def initialize
+        super
+        @result = make_short
+        @result.value = 0b1101.self_xor.select(0x7FFF)
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b1011)
+      end
+    end,
+    create_program("ands bits") do
+      def initialize
+        super
+        @result = make_short(value: 0b1101)
+        @result.value = @result & 0b1011
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b1001)
+      end
+    end,
+    create_program("ors bits") do
+      def initialize
+        super
+        @result = make_short(value: 0b1101)
+        @result.value = @result | 0b1011
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b1111)
+      end
+    end,
+    create_program("xors bits") do
+      def initialize
+        super
+        @result = make_short(value: 0b1101)
+        @result.value = @result ^ 0b1011
+        write(@result)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0b0110)
+      end
+    end,
     create_program("nests one group") do
       def initialize
         super
