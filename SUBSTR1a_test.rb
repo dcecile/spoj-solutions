@@ -179,6 +179,52 @@ RSpec.describe Program do
         output_numerals(0b0110)
       end
     end,
+    create_program("inverts boolean") do
+      def initialize
+        super
+        @result = make_short()
+        (0..1).each do |i|
+          @result.value = i
+          @result.value = !@result
+          write(@result)
+        end
+        exit_program
+      end
+      def self.output
+        output_numerals(1, 0)
+      end
+    end,
+    create_program("compares equality") do
+      def initialize
+        super
+        @result = make_short()
+        (0..7).each do |i|
+          @result.value = 6
+          @result.value = @result == i
+          write(@result)
+        end
+        exit_program
+      end
+      def self.output
+        output_numerals(0, 0, 0, 0, 0, 0, 1, 0)
+      end
+    end,
+    create_program("compares inequality") do
+      def initialize
+        super
+        @result = make_short()
+        (0..7).each do |i|
+          @result.value = 6
+          @result.value = @result != i
+          write(@result)
+        end
+        exit_program
+      end
+
+      def self.output
+        output_numerals(1, 1, 1, 1, 1, 1, 0, 1)
+      end
+    end,
     create_program("nests one group") do
       def initialize
         super

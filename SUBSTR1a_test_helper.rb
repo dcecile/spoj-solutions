@@ -54,14 +54,12 @@ class TestProgram < Program
 
   def self.output_numerals(*numerals)
     numerals
-      .map do |numeral|
-        text = convert_numeral(numeral)
-        "#{' ' * text.length}\n#{text}\n"
-      end
+      .map(&method(:convert_numeral))
       .join
   end
 
   def self.convert_numeral(numeral)
+    return "_\n\n" if numeral.zero?
     mapping = %w(IV XL CD)
     i = 0
     text = ""
@@ -83,7 +81,7 @@ class TestProgram < Program
       i += 1
       break if numeral.zero?
     end
-    text
+    "#{' ' * text.length}\n#{text}\n"
   end
 end
 

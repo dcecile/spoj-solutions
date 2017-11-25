@@ -81,6 +81,9 @@ module Expressions
       &
       |
       ^
+      !
+      ==
+      !=
     ))
   end
 
@@ -196,6 +199,18 @@ module Expressions
 
     def self.^(x, y)
       bitwise(x, y, :self_xor)
+    end
+
+    def self.!(x)
+      x ^ 1
+    end
+
+    def self.==(x, y)
+      !(x != y)
+    end
+
+    def self.!=(x, y)
+      0xFFFF.select(x ^ y).select(1)
     end
   end
 end
