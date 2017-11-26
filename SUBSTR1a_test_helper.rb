@@ -56,6 +56,16 @@ class TestProgram < Program
     nil
   end
 
+  def self.input_problems(problems)
+    problems
+      .map do |problem|
+        number_a = problem[0].to_s(2).rjust(SubstringSolution::LENGTH_A, "0")
+        number_b = problem[1].to_s(2).rjust(SubstringSolution::LENGTH_B, "0")
+        [number_a, number_b].join(" ")
+      end
+      .join("\n")
+  end
+
   def self.output_numerals(*numerals)
     numerals
       .map(&method(:convert_numeral))

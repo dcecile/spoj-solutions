@@ -146,7 +146,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b1101)
-        @result.value = @result & 0b1011
+        @result.value &= 0b1011
         write(@result)
         exit_program
       end
@@ -159,7 +159,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b1101)
-        @result.value = @result | 0b1011
+        @result.value |= 0b1011
         write(@result)
         exit_program
       end
@@ -172,7 +172,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b1101)
-        @result.value = @result ^ 0b1011
+        @result.value ^= 0b1011
         write(@result)
         exit_program
       end
@@ -290,7 +290,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b0111)
-        @result.value = @result << 1
+        @result.value <<= 1
         write(@result)
         exit_program
       end
@@ -303,7 +303,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b0111)
-        @result.value = @result << 5
+        @result.value <<= 5
         write(@result)
         exit_program
       end
@@ -316,7 +316,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b0111)
-        @result.value = @result >> 1
+        @result.value >>= 1
         write(@result)
         exit_program
       end
@@ -329,7 +329,7 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short(value: 0b0111_0110)
-        @result.value = @result >> 5
+        @result.value >>= 5
         write(@result)
         exit_program
       end
@@ -421,20 +421,77 @@ RSpec.describe Program do
         "hello ick world\n"
       end
     end,
+    create_program("reads problem input") do
+      include SubstringSolution
+
+      def initialize
+        super
+        initialize_solution
+        4.times do
+          read_input
+          write(@number_a)
+          write(@number_b)
+        end
+        exit_program
+      end
+
+      def self.problems
+        [
+          [0b0110, 0b01],
+          [0b1100, 0b00],
+          [0b1101, 0b10],
+          [0b1101, 0b00]
+        ]
+      end
+
+      def self.input
+        input_problems(problems)
+      end
+
+      def self.output
+        output_numerals(*problems.flatten)
+      end
+    end,
+    create_program("checks substrings") do
+      include SubstringSolution
+
+      def initialize
+        super
+        initialize_solution
+        @number_a.value = 0b1101
+        @number_b.value = 0b00
+        (0..2).each do |i|
+          @is_substring.value = check_substring(i)
+          write(@is_substring)
+        end
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0, 0, 0)
+      end
+    end,
     create_program("solves") do
       include SubstringSolution
 
       def initialize
         super
-        run_solution
+        run_solution(self.class.problems.count)
+      end
+
+      def self.problems
+        [
+          [0b1101, 0b10, 1],
+          [0b1101, 0b00, 0]
+        ]
       end
 
       def self.input
-        "1101 10"
+        input_problems(problems)
       end
 
       def self.output
-        output_numerals(0b1101, 0b10)
+        output_numerals(*problems.map { |problem| problem[2] })
       end
     end
   ]

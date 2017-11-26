@@ -302,6 +302,10 @@ module References
       "#{type}#{name}"
     end
 
+    def value
+      self
+    end
+
     def value=(value)
       program.set_value(self, value)
     end
@@ -316,6 +320,10 @@ module References
 
     def compile(group)
       group.compile("#{group.next(reference)}SUB#{group.next(index)}")
+    end
+
+    def value
+      self
     end
 
     def value=(value)
@@ -381,7 +389,7 @@ module BinaryIO
     read(output)
     (1..length).each do |i|
       set_addition(output[i], @last_input, output[i])
-      output[i].value = output[i] & 0xFF
+      output[i].value &= 0xFF
       @last_input.value = output[i]
     end
   end
@@ -445,13 +453,15 @@ end
 module SubstringSolution
   LENGTH_A = 4
   LENGTH_B = 2
+  DEFAULT_MASK = (1 << LENGTH_B) - 1
 
   def initialize_solution
     @string_input_a = make_short_array(value: LENGTH_A)
-    @string_input_b = make_short_array(value: LENGTH_A)
+    @string_input_b = make_short_array(value: LENGTH_B)
     @string_input_separator = make_short_array(value: 1)
     @number_a = make_short
     @number_b = make_short
+    @is_substring = make_short
   end
 
   def read_separator
@@ -464,13 +474,27 @@ module SubstringSolution
     read_separator
     read_string(@string_input_b, LENGTH_B)
     parse_string(@number_b, @string_input_b, LENGTH_B)
+    read_separator
   end
 
-  def run_solution
+  def check_for_substring_match
+    @is_substring.value = 0
+    (0..(LENGTH_A - LENGTH_B)).each do |i|
+      @is_substring.value |= check_substring(i)
+    end
+    write(@is_substring)
+  end
+
+  def check_substring(i)
+    @number_a.select(DEFAULT_MASK << i) == @number_b
+  end
+
+  def run_solution(problem_count)
     initialize_solution
-    read_input
-    write(@number_a)
-    write(@number_b)
+    problem_count.times do
+      read_input
+      check_for_substring_match
+    end
     exit_program
   end
 end
@@ -479,7 +503,7 @@ def main
   name = "SUBSTR1a"
   program = Program.new
   program.extend(SubstringSolution)
-  program.run_solution
+  program.run_solution(24)
   puts program.program_text
   program.write_source(name)
   program.compile(name).join
