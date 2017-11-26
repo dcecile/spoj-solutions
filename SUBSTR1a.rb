@@ -1,5 +1,12 @@
-require 'open3'
+# frozen_string_literal: true
 
+# SBSTR1 - Substring Check (Bug Funny)
+# http://www.spoj.com/problems/SBSTR1/
+
+require "open3"
+
+# Listing contains all program source text, and
+# can compile & run the program
 module Listing
   POLITENESS_LEVEL = 5
 
@@ -25,7 +32,7 @@ module Listing
   end
 
   def politeness_required?
-    @politeness_counter == 0
+    @politeness_counter.zero?
   end
 
   def program_text
@@ -48,53 +55,69 @@ module Listing
     ExecutionResult.new(program_text, nil, output, status)
   end
 
-  def run(name, input=nil)
-    output, status = Open3.capture2e(File.absolute_path(name), stdin_data: input)
+  def run(name, input)
+    output, status = Open3.capture2e(
+      File.absolute_path(name),
+      stdin_data: input
+    )
     ExecutionResult.new(program_text, input, output, status)
   end
 end
 
+# Expressions includes all native Intercal operations,
+# helper bitwise methods, and Ruby Integer refinements
 module Expressions
+  # Ops is a mixin for all Intercal expressions
   module Ops
     def self.define_ops(ops)
       ops.each do |op|
-        define_method(op) do |other=nil|
-          is_native_self_call = !self.is_a?(Ops) && self.respond_to?(op)
-          is_native_other_param = other.nil? || !other.is_a?(Ops)
-          if is_native_self_call && is_native_other_param
-            self.send(op, *[other].compact)
-          else
-            OpsImpl.send(op, self, *[other].compact)
-          end
+        define_method(op) do |other = nil|
+          Ops.call_op(op, self, other)
         end
       end
     end
 
-    define_ops(%i(
-      interleave
-      select
-      self_and
-      self_or
-      self_xor
-      <<
-      >>
-      &
-      |
-      ^
-      !
-      ==
-      !=
-    ))
+    def self.call_op(op, x, y)
+      is_native_x_call = !x.is_a?(Ops) && x.respond_to?(op)
+      is_native_y_param = y.nil? || !y.is_a?(Ops)
+      if is_native_x_call && is_native_y_param
+        x.send(op, *[y].compact)
+      else
+        OpsImpl.send(op, x, *[y].compact)
+      end
+    end
+
+    define_ops(
+      %i[
+        interleave
+        select
+        self_and
+        self_or
+        self_xor
+        <<
+        >>
+        &
+        |
+        ^
+        !
+        ==
+        !=
+      ]
+    )
   end
 
+  # Literal is a mixin for Ruby Integer refinments
   module Literal
     include Ops
 
-    def compile(group)
+    def compile(_group)
       "\##{self}"
     end
   end
 
+  # Refinements refines Ruby's Integer class to support
+  # compilation to an Intercal expression and all Intercal
+  # operations
   module Refinements
     refine Integer do
       include Literal
@@ -103,6 +126,8 @@ module Expressions
 
   using Refinements
 
+  # Primitive is a basic binary or unary operator supported
+  # natively in the Intercal language
   class Primitive
     include Ops
 
@@ -127,6 +152,8 @@ module Expressions
     end
   end
 
+  # Group is required to support nested expressions in Intercal,
+  # and all grouped output is handled automatically by this class
   class Group
     def initialize(text, next_group)
       @text = text
@@ -150,6 +177,8 @@ module Expressions
     TWO = new('"', :ONE)
   end
 
+  # OpsImpl implements all primitive and supplementary
+  # methods for Intercal expressions
   module OpsImpl
     def self.interleave(x, y)
       Primitive.new_binary("$", x, y)
@@ -174,7 +203,8 @@ module Expressions
     def self.<<(x, y)
       result = x
       y.times do
-        result = result
+        result =
+          result
           .interleave(0)
           .select(0b1010_1010_1010_1011)
       end
@@ -206,7 +236,10 @@ module Expressions
     end
 
     def self.==(x, y)
+      # rubocop:disable Style/InverseMethods
+      # Implement equality in terms of inequality
       !(x != y)
+      # rubocop:enable Style/InverseMethods
     end
 
     def self.!=(x, y)
@@ -215,10 +248,12 @@ module Expressions
   end
 end
 
+# Statements includes definitions for basic Intercal
+# statements: set value, read, write, goto, exit
 module Statements
   include Expressions
 
-  def statement(text, label=nil)
+  def statement(text, label = nil)
     label_text = label&.compile&.rjust(3)
     command_text =
       if politeness_required?
@@ -251,6 +286,8 @@ module Statements
   end
 end
 
+# References includes Intercal short integer and short
+# integer array variable references
 module References
   include Expressions
 
@@ -261,7 +298,7 @@ module References
   Reference = Struct.new(:program, :type, :name) do
     include Ops
 
-    def compile(group)
+    def compile(_group)
       "#{type}#{name}"
     end
 
@@ -286,49 +323,53 @@ module References
     end
   end
 
-  def make_short(name: get_new_name, value: nil)
+  def make_short(name: new_reference_name, value: nil)
     reference = Reference.new(self, ".", name)
     reference.value = value if value
     reference
   end
 
-  def make_short_array(name: get_new_name, value: nil)
+  def make_short_array(name: new_reference_name, value: nil)
     reference = Reference.new(self, ",", name)
     reference.value = value if value
     reference
   end
 
-  def get_new_name
+  def new_reference_name
     result = @next_name
     @next_name += 1
     result
   end
 end
 
+# StandardLibrary provides a limited interface to the Intercal
+# standard library (addition, subtraction)
 module StandardLibrary
   def initialize_standard_library
     @standard_plus = label(1009)
     @standard_minus = label(1010)
-    @standard_input_1 = make_short(name: 1)
-    @standard_input_2 = make_short(name: 2)
-    @standard_output_3 = make_short(name: 3)
+    @standard_input1 = make_short(name: 1)
+    @standard_input2 = make_short(name: 2)
+    @standard_output3 = make_short(name: 3)
   end
 
   def set_addition(output, x, y)
-    @standard_input_1.value = x
-    @standard_input_2.value = y
+    @standard_input1.value = x
+    @standard_input2.value = y
     goto(@standard_plus)
-    output.value = @standard_output_3
+    output.value = @standard_output3
   end
 
   def set_subtraction(output, x, y)
-    @standard_input_1.value = x
-    @standard_input_2.value = y
+    @standard_input1.value = x
+    @standard_input2.value = y
     goto(@standard_minus)
-    output.value = @standard_output_3
+    output.value = @standard_output3
   end
 end
 
+# BinaryIO includes the C-INTERCAL API for reading
+# and writing binary data
 module BinaryIO
   def initialize_binary_io
     @last_input = make_short(value: 0)
@@ -352,12 +393,15 @@ module BinaryIO
     end
   end
 
+  # rubocop:disable Metrics/AbcSize
   def reverse_bits(value)
+    # TODO: Find out why this code is in violation and if it needs fixing
     value = ((value & 0b00001111) << 4) | ((value & 0b11110000) >> 4)
     value = ((value & 0b00110011) << 2) | ((value & 0b11001100) >> 2)
     value = ((value & 0b01010101) << 1) | ((value & 0b10101010) >> 1)
     value
   end
+  # rubocop:enable Metrics/AbcSize
 
   def write_char(char)
     value = char.codepoints.first
@@ -378,6 +422,8 @@ module BinaryIO
   end
 end
 
+# Program includes all modules needed for general Intercal
+# programs
 class Program
   include Listing
   include Statements
@@ -394,6 +440,8 @@ class Program
   end
 end
 
+# SubstringSolution includes an implementation for the
+# SPOJ SUBSTR1 solution
 module SubstringSolution
   LENGTH_A = 4
   LENGTH_B = 2
@@ -437,14 +485,7 @@ def main
   program.compile(name).join
 end
 
-if __FILE__ == $PROGRAM_NAME
-  main
-end
-
-# Ideal setup:
-# - define x= methods for variables
-# - set up + ~ ... operators for expressions
-# - use automatic grouping
+main if $PROGRAM_NAME == __FILE__
 
 # Set up a variable with 1 or 2
 # Jump from if to else, to test

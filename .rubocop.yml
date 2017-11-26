@@ -1,9 +1,13 @@
+AllCops:
+  TargetRubyVersion: 2.4
+
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
 Metrics/BlockLength:
   ExcludedMethods:
     - describe
+    - define
 
 Naming/FileName:
   Enabled: false

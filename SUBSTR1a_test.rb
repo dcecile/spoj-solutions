@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "tmpdir"
 require "SUBSTR1a_test_helper"
 require "SUBSTR1a"
@@ -182,7 +184,7 @@ RSpec.describe Program do
     create_program("inverts boolean") do
       def initialize
         super
-        @result = make_short()
+        @result = make_short
         (0..1).each do |i|
           @result.value = i
           @result.value = !@result
@@ -190,6 +192,7 @@ RSpec.describe Program do
         end
         exit_program
       end
+
       def self.output
         output_numerals(1, 0)
       end
@@ -197,7 +200,7 @@ RSpec.describe Program do
     create_program("compares equality") do
       def initialize
         super
-        @result = make_short()
+        @result = make_short
         (0..7).each do |i|
           @result.value = 6
           @result.value = @result == i
@@ -205,6 +208,7 @@ RSpec.describe Program do
         end
         exit_program
       end
+
       def self.output
         output_numerals(0, 0, 0, 0, 0, 0, 1, 0)
       end
@@ -212,7 +216,7 @@ RSpec.describe Program do
     create_program("compares inequality") do
       def initialize
         super
-        @result = make_short()
+        @result = make_short
         (0..7).each do |i|
           @result.value = 6
           @result.value = @result != i
@@ -248,12 +252,9 @@ RSpec.describe Program do
         @array[1].value = 13
         @array[2].value = 19
         @result = make_short
-        @result.value =
-          @array[
-            0b0101
-            .interleave(0b1010)
-            .select(0b1010)
-          ]
+        @result.value = @array[
+          0b0101.interleave(0b1010).select(0b1010)
+        ]
         write(@result)
         exit_program
       end
@@ -266,19 +267,19 @@ RSpec.describe Program do
       def initialize
         super
         @result = make_short
-        @result.value =
-          0b1111
-          .interleave(0)
-          .select(0b1111)
-          .interleave(0)
-          .select(0b1111)
-          .interleave(
-            0b1111_1111
-            .select(0b1111)
-          )
-          .select(0b0111_1110)
+        @result.value = compute
         write(@result)
         exit_program
+      end
+
+      def compute
+        0b1111
+          .interleave(0)
+          .select(0b1111)
+          .interleave(0)
+          .select(0b1111)
+          .interleave(0b1111_1111 .select(0b1111))
+          .select(0b0111_1110)
       end
 
       def self.output
@@ -444,7 +445,9 @@ RSpec.describe Program do
         program = program_class.new
         program.write_source(name)
         expect(program.compile(name)).to succeed_and_output("")
-        expect(program.run(name, program_class.input)).to succeed_and_output(program_class.output)
+        expect(program.run(name, program_class.input)).to(
+          succeed_and_output(program_class.output)
+        )
       end
     end
   end

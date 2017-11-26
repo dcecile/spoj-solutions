@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "PRIME1a"
 
 RSpec.describe "Sieve" do

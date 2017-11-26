@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # PRIME1 - Prime Generator
 # http://www.spoj.com/problems/PRIME1/
 
