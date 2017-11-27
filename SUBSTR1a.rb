@@ -13,6 +13,7 @@ module Listing
   def initialize_listing
     @buffer = StringIO.new
     @politeness_counter = 0
+    @next_label_name = 1
   end
 
   def add_statement(statement)
@@ -21,14 +22,24 @@ module Listing
       (@politeness_counter - 1) % POLITENESS_LEVEL
   end
 
-  Label = Struct.new(:line) do
+  Label = Struct.new(:name) do
     def compile
-      "(#{line})"
+      "(#{name})"
     end
   end
 
-  def label(line)
-    Label.new(line)
+  def make_label(name: new_label_name)
+    Label.new(name)
+  end
+
+  def make_labels(count)
+    Array.new(count).map { make_label }
+  end
+
+  def new_label_name
+    result = @next_label_name
+    @next_label_name += 1
+    result
   end
 
   def politeness_required?
@@ -249,20 +260,27 @@ module Expressions
 end
 
 # Statements includes definitions for basic Intercal
-# statements: set value, read, write, goto, exit
+# statements: set value, read, write, jump, exit
 module Statements
   include Expressions
 
+  NOP_TEXT = "DON'T GIVE UP"
+
   def statement(text, label = nil)
-    label_text = label&.compile&.rjust(3)
-    command_text =
-      if politeness_required?
-        "PLEASE"
-      else
-        "DO"
-      end
-    statement = "#{label_text} #{command_text} #{text}"
+    label_text = (label&.compile || "").rjust(5)
+    command_text = adjust_statement_text(text)
+    statement = "#{label_text} #{command_text}"
     add_statement(statement)
+  end
+
+  def adjust_statement_text(text)
+    if politeness_required?
+      "PLEASE #{text}"
+    elsif text == NOP_TEXT
+      text
+    else
+      "DO #{text}"
+    end
   end
 
   def set_value(output, value)
@@ -277,12 +295,76 @@ module Statements
     statement("READ OUT #{Group.compile(value)}")
   end
 
-  def goto(label)
+  def label_nop(label)
+    statement(NOP_TEXT, label)
+  end
+
+  def jump_and_push_stack(label)
     statement("#{label.compile} NEXT")
+  end
+
+  def pop_stack_and_jump(count)
+    statement("RESUME #{Group.compile(count)}")
+  end
+
+  def pop_stack_and_discard(count)
+    statement("FORGET #{Group.compile(count)}")
   end
 
   def exit_program
     statement("GIVE UP")
+  end
+end
+
+# ControlFlow includes structural programming concepts
+module ControlFlow
+  include Expressions
+
+  def if_else_block(condition, if_lambda, else_lambda)
+    IfElseBlock.new(self, condition, if_lambda, else_lambda).compile
+  end
+
+  # IfElseBlock is a structured if-else block
+  class IfElseBlock
+    def initialize(program, condition, if_lambda, else_lambda)
+      @program = program
+      @condition = condition
+      @if_lambda = if_lambda
+      @else_lambda = else_lambda
+      @else_label, @condition_label, @end_label = @program.make_labels(3)
+    end
+
+    def compile
+      compile_if
+      compile_else
+      compile_condition
+      compile_end
+    end
+
+    def compile_if
+      @program.jump_and_push_stack(@else_label)
+      @if_lambda.call
+      @program.jump_and_push_stack(@end_label)
+    end
+
+    def compile_else
+      @program.label_nop(@else_label)
+      @program.jump_and_push_stack(@condition_label)
+      @program.pop_stack_and_discard(1)
+      @else_lambda.call
+      @program.jump_and_push_stack(@end_label)
+    end
+
+    def compile_condition
+      @program.label_nop(@condition_label)
+      @program.pop_stack_and_discard(@condition)
+      @program.pop_stack_and_jump(1)
+    end
+
+    def compile_end
+      @program.label_nop(@end_label)
+      @program.pop_stack_and_discard(1)
+    end
   end
 end
 
@@ -292,7 +374,7 @@ module References
   include Expressions
 
   def initialize_references
-    @next_name = 10
+    @next_reference_name = 10
   end
 
   Reference = Struct.new(:program, :type, :name) do
@@ -344,8 +426,8 @@ module References
   end
 
   def new_reference_name
-    result = @next_name
-    @next_name += 1
+    result = @next_reference_name
+    @next_reference_name += 1
     result
   end
 end
@@ -354,8 +436,8 @@ end
 # standard library (addition, subtraction)
 module StandardLibrary
   def initialize_standard_library
-    @standard_plus = label(1009)
-    @standard_minus = label(1010)
+    @standard_plus = make_label(name: 1009)
+    @standard_minus = make_label(name: 1010)
     @standard_input1 = make_short(name: 1)
     @standard_input2 = make_short(name: 2)
     @standard_output3 = make_short(name: 3)
@@ -364,14 +446,14 @@ module StandardLibrary
   def set_addition(output, x, y)
     @standard_input1.value = x
     @standard_input2.value = y
-    goto(@standard_plus)
+    jump_and_push_stack(@standard_plus)
     output.value = @standard_output3
   end
 
   def set_subtraction(output, x, y)
     @standard_input1.value = x
     @standard_input2.value = y
-    goto(@standard_minus)
+    jump_and_push_stack(@standard_minus)
     output.value = @standard_output3
   end
 end
@@ -435,6 +517,7 @@ end
 class Program
   include Listing
   include Statements
+  include ControlFlow
   include References
   include Expressions
   include StandardLibrary
@@ -482,7 +565,11 @@ module SubstringSolution
     (0..(LENGTH_A - LENGTH_B)).each do |i|
       @is_substring.value |= check_substring(i)
     end
-    write(@is_substring)
+    if_else_block(
+      @is_substring,
+      -> { write_string("1\n") },
+      -> { write_string("0\n") }
+    )
   end
 
   def check_substring(i)
@@ -510,18 +597,3 @@ def main
 end
 
 main if $PROGRAM_NAME == __FILE__
-
-# Set up a variable with 1 or 2
-# Jump from if to else, to test
-# Return to 1 or 2
-#      DO WRITE IN :1
-#      DO (02) NEXT
-# (01) DO READ OUT #3
-#      DO (04) NEXT
-# (02) DO (03) NEXT
-#      DO FORGET #1
-#      DO READ OUT #5
-#      DO (04) NEXT
-# (03) PLEASE RESUME :1
-# (04) PLEASE FORGET #1
-#      PLEASE GIVE UP

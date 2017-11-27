@@ -8,6 +8,7 @@ Metrics/BlockLength:
   ExcludedMethods:
     - describe
     - define
+    - create_program
 
 Naming/FileName:
   Enabled: false

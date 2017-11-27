@@ -49,6 +49,125 @@ RSpec.describe Program do
         output_numerals(4, 5)
       end
     end,
+    create_program("jumps to a label") do
+      def initialize
+        super
+        @labels = make_labels(3)
+        write(0)
+        jump_and_push_stack(@labels[1])
+        @labels.each_with_index do |label, i|
+          label_nop(label)
+          write(100 * (i + 1))
+          exit_program
+        end
+      end
+
+      def self.output
+        output_numerals(0, 200)
+      end
+    end,
+    create_program("jumps to stack items") do
+      def initialize
+        super
+        @caller_block, @callee_block = make_labels(2)
+        main
+        caller_block
+        callee_block
+      end
+
+      def main
+        write(0)
+        jump_and_push_stack(@caller_block)
+        write(100)
+        exit_program
+      end
+
+      def caller_block
+        label_nop(@caller_block)
+        jump_and_push_stack(@callee_block)
+        write(200)
+        pop_stack_and_jump(1)
+        exit_program
+      end
+
+      def callee_block
+        label_nop(@callee_block)
+        write(300)
+        pop_stack_and_jump(1)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0, 300, 200, 100)
+      end
+    end,
+    create_program("discards stack items") do
+      def initialize
+        super
+        @caller_block = make_label
+        @callee_block = make_label
+        main
+        caller_block
+        callee_block
+      end
+
+      def main
+        write(0)
+        jump_and_push_stack(@caller_block)
+        write(100)
+        exit_program
+      end
+
+      def caller_block
+        label_nop(@caller_block)
+        pop_stack_and_discard(0)
+        jump_and_push_stack(@callee_block)
+        write(200)
+        exit_program
+      end
+
+      def callee_block
+        label_nop(@callee_block)
+        write(300)
+        pop_stack_and_discard(1)
+        pop_stack_and_jump(1)
+        exit_program
+      end
+
+      def self.output
+        output_numerals(0, 300, 100)
+      end
+    end,
+    create_program("chooses path in if-else block") do
+      def initialize
+        super
+        positive
+        negative
+        exit_program
+      end
+
+      def positive
+        write(0)
+        if_else_block(
+          1,
+          -> { write(100) },
+          -> { write(200) }
+        )
+      end
+
+      def negative
+        write(300)
+        if_else_block(
+          0,
+          -> { write(400) },
+          -> { write(500) }
+        )
+      end
+
+      def self.output
+        output_numerals(0, 100, 300, 500)
+      end
+    end,
     create_program("sets and gets basic reference") do
       def initialize
         super
@@ -491,7 +610,9 @@ RSpec.describe Program do
       end
 
       def self.output
-        output_numerals(*problems.map { |problem| problem[2] })
+        problems
+          .map { |problem| "#{problem[2]}\n" }
+          .join
       end
     end
   ]
