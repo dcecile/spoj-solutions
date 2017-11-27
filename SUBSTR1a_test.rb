@@ -168,6 +168,26 @@ RSpec.describe Program do
         output_numerals(0, 100, 300, 500)
       end
     end,
+    create_program("loops a while block") do
+      def initialize
+        super
+        @input = make_short
+        read(@input)
+        while_block(@input != 9) do
+          write(@input)
+          read(@input)
+        end
+        exit_program
+      end
+
+      def self.input
+        "ONE\nFOUR\nFIVE\nSEVEN\nNINE\n"
+      end
+
+      def self.output
+        output_numerals(1, 4, 5, 7)
+      end
+    end,
     create_program("sets and gets basic reference") do
       def initialize
         super
@@ -601,7 +621,9 @@ RSpec.describe Program do
       def self.problems
         [
           [0b1101, 0b10, 1],
-          [0b1101, 0b00, 0]
+          [0b1101, 0b00, 0],
+          [0b1001, 0b10, 1],
+          [0b0001, 0b00, 1]
         ]
       end
 

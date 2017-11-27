@@ -267,7 +267,7 @@ module Statements
   NOP_TEXT = "DON'T GIVE UP"
 
   def statement(text, label = nil)
-    label_text = (label&.compile || "").rjust(5)
+    label_text = (label&.compile || "").rjust(4)
     command_text = adjust_statement_text(text)
     statement = "#{label_text} #{command_text}"
     add_statement(statement)
@@ -358,6 +358,51 @@ module ControlFlow
     def compile_condition
       @program.label_nop(@condition_label)
       @program.pop_stack_and_discard(@condition)
+      @program.pop_stack_and_jump(1)
+    end
+
+    def compile_end
+      @program.label_nop(@end_label)
+      @program.pop_stack_and_discard(1)
+    end
+  end
+
+  def while_block(condition, &body_block)
+    WhileBlock.new(self, condition, body_block).compile
+  end
+
+  # WhileBlock is a structured while block
+  class WhileBlock
+    def initialize(program, condition, body_block)
+      @program = program
+      @condition = condition
+      @body_block = body_block
+      @body_label, @condition_label, @end_label = @program.make_labels(3)
+    end
+
+    def compile
+      compile_begin
+      compile_body
+      compile_condition
+      compile_end
+    end
+
+    def compile_begin
+      @program.jump_and_push_stack(@body_label)
+      @program.jump_and_push_stack(@end_label)
+    end
+
+    def compile_body
+      @program.label_nop(@body_label)
+      @program.jump_and_push_stack(@condition_label)
+      @program.pop_stack_and_discard(1)
+      @body_block.call
+      compile_begin
+    end
+
+    def compile_condition
+      @program.label_nop(@condition_label)
+      @program.pop_stack_and_discard(!@condition)
       @program.pop_stack_and_jump(1)
     end
 
@@ -542,6 +587,7 @@ module SubstringSolution
     @string_input_a = make_short_array(value: LENGTH_A)
     @string_input_b = make_short_array(value: LENGTH_B)
     @string_input_separator = make_short_array(value: 1)
+    @loop_counter = make_short
     @number_a = make_short
     @number_b = make_short
     @is_substring = make_short
@@ -578,9 +624,11 @@ module SubstringSolution
 
   def run_solution(problem_count)
     initialize_solution
-    problem_count.times do
+    @loop_counter.value = 0
+    while_block(@loop_counter != problem_count) do
       read_input
       check_for_substring_match
+      set_addition(@loop_counter, @loop_counter, 1)
     end
     exit_program
   end
