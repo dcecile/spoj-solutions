@@ -92,7 +92,7 @@ class TestProgram < Program
     end
   end
 
-  NUMERALS = %w[IV XL CD ??].freeze
+  NUMERALS = %w[IV XL CD M? ??].freeze
   NUMERAL_SEQUENCE = [
     "",
     "I",

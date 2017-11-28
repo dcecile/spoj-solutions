@@ -217,7 +217,7 @@ module Expressions
         result =
           result
           .interleave(0)
-          .select(0b1010_1010_1010_1011)
+          .select(0xFFFF.interleave(1))
       end
       result
     end
@@ -579,8 +579,8 @@ end
 # SubstringSolution includes an implementation for the
 # SPOJ SUBSTR1 solution
 module SubstringSolution
-  LENGTH_A = 4
-  LENGTH_B = 2
+  LENGTH_A = 10
+  LENGTH_B = 5
   DEFAULT_MASK = (1 << LENGTH_B) - 1
 
   def initialize_solution

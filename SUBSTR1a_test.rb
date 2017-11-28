@@ -23,11 +23,12 @@ RSpec.describe Program do
         super
         write(400)
         write(632)
+        write(3000)
         exit_program
       end
 
       def self.output
-        output_numerals(400, 632)
+        output_numerals(400, 632, 3000)
       end
     end,
     create_program("reads numbers") do
@@ -428,14 +429,14 @@ RSpec.describe Program do
     create_program("shifts bits left one") do
       def initialize
         super
-        @result = make_short(value: 0b0111)
+        @result = make_short(value: 0b01_1101_1000)
         @result.value <<= 1
         write(@result)
         exit_program
       end
 
       def self.output
-        output_numerals(0b1110)
+        output_numerals(0b11_1011_0000)
       end
     end,
     create_program("shifts bits left five") do
@@ -534,19 +535,19 @@ RSpec.describe Program do
       def initialize
         super
         @number = make_short
-        @input = make_short_array(value: 8)
-        read_string(@input, 8)
-        parse_string(@number, @input, 8)
+        @input = make_short_array(value: 10)
+        read_string(@input, 10)
+        parse_string(@number, @input, 10)
         write(@number)
         exit_program
       end
 
       def self.input
-        "11010111"
+        "1001100110"
       end
 
       def self.output
-        output_numerals(0b11010111)
+        output_numerals(0b10_0110_0110)
       end
     end,
     create_program("writes text") do
@@ -576,10 +577,10 @@ RSpec.describe Program do
 
       def self.problems
         [
-          [0b0110, 0b01],
-          [0b1100, 0b00],
-          [0b1101, 0b10],
-          [0b1101, 0b00]
+          [0b1001100110, 0b01101],
+          [0b1100001100, 0b01000],
+          [0b0101111101, 0b01010],
+          [0b0010101101, 0b00000]
         ]
       end
 
@@ -597,9 +598,9 @@ RSpec.describe Program do
       def initialize
         super
         initialize_solution
-        @number_a.value = 0b1101
-        @number_b.value = 0b00
-        (0..2).each do |i|
+        @number_a.value = 0b0010001001
+        @number_b.value = 0b0000000010
+        (0..5).each do |i|
           @is_substring.value = check_substring(i)
           write(@is_substring)
         end
@@ -607,7 +608,7 @@ RSpec.describe Program do
       end
 
       def self.output
-        output_numerals(0, 0, 0)
+        output_numerals(0, 0, 1, 0, 0, 0)
       end
     end,
     create_program("solves") do
@@ -620,10 +621,14 @@ RSpec.describe Program do
 
       def self.problems
         [
-          [0b1101, 0b10, 1],
-          [0b1101, 0b00, 0],
-          [0b1001, 0b10, 1],
-          [0b0001, 0b00, 1]
+          [0b1111111111, 0b11111, 1],
+          [0b0000000000, 0b00000, 1],
+          [0b1111111111, 0b00000, 0],
+          [0b0000000000, 0b11111, 0],
+          [0b1010110010, 0b10110, 1],
+          [0b1110111011, 0b10011, 0],
+          [0b1111000000, 0b11110, 1],
+          [0b1111110000, 0b10000, 1]
         ]
       end
 
